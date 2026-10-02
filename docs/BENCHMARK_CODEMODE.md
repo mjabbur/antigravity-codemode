@@ -1,104 +1,104 @@
-# Metodologia e Relatório Científico de Benchmark: Codemode vs Tool Calling
+# Benchmark Methodology & Empirical Scientific Report: Codemode vs Tool Calling
 
-> **Data de Execução:** 02/10/2026  
-> **Script de Teste:** [`benchmarks/run-benchmark.ts`](file:///c:/Dev/Joker/.agents/plugins/codemode/server/benchmarks/run-benchmark.ts)  
-> **Ambiente Experimental:** Windows 11 x64, 16 CPUs, Node.js v24.19.0, QuickJS WASI 3.6.2, Ripwire v0.6.5
-
----
-
-## 1. Fundamentação Teórica e Hipóteses de Pesquisa
-
-Na interação típica de agentes de IA com bases de código complexas, a abordagem tradicional utiliza o ciclo iterativo de **Tool Calling Sequencial na Nuvem**:
-1. O modelo decide chamar uma ferramenta (ex: `glob`, `grep` ou `readFile`).
-2. A requisição trafega pela rede, o host local executa e devolve o output bruto.
-3. O payload bruto (muitas vezes dezenas de kilobytes de código não filtrado) é injetado no contexto da LLM.
-4. O ciclo se repete por $N$ turnos até que o agente decida a próxima ação.
-
-### As Hipóteses Avaliadas:
-- **$H_1$ (Economia de Contexto):** Executar a filtragem e navegação localmente no sandbox WebAssembly reduzirá o volume de tokens injetados na LLM em mais de 90% em tarefas exploratórias.
-- **$H_2$ (Redução de Latência):** Eliminar múltiplos turnos de rede (onde cada turno de inferência LLM consome $\sim 2.000\text{ms}$ a $2.500\text{ms}$) resultará em um tempo total de resposta significativamente menor para o usuário, mesmo considerando o overhead de compilação/inicialização do WebAssembly local.
-- **$H_3$ (Integridade e Atomicidade):** O modelo *staging-first* com rollback automático garantirá 100% de consistência transacional em refatorações multi-arquivo, impossível no modelo de escritas pontuais diretas.
-- **$H_4$ (Estabilidade de Memória):** Múltiplos ciclos de inicialização e destruição de sandboxes QuickJS WASM no mesmo processo Node.js não apresentarão vazamentos de memória (memory leaks).
+> **Execution Date:** October 2, 2026  
+> **Benchmark Script:** [`benchmarks/run-benchmark.ts`](file:///c:/Dev/Joker/.agents/plugins/codemode/server/benchmarks/run-benchmark.ts)  
+> **Test Environment:** Windows 11 x64, 16 CPUs, Node.js v24.19.0, QuickJS WASI 3.6.2, Ripwire v0.6.5
 
 ---
 
-## 2. Metodologia Experimental
+## 1. Theoretical Motivation & Research Hypotheses
 
-### 2.1. Modelo Matemático de Latência Percebida pelo Usuário
-A latência observada pelo desenvolvedor no chat é modelada por:
+In conventional AI agent architectures, interaction with a codebase relies on an iterative, sequential loop of **Cloud-Mediated Tool Calling**:
+1. The model selects a tool (e.g., `glob`, `grep`, or `readFile`).
+2. The request travels over HTTP/SSE; the local host executes the tool and returns raw output.
+3. Unfiltered payloads (often tens of kilobytes of unparsed code) are injected into the LLM context window.
+4. The cycle repeats for $N$ turns until the agent synthesizes an action.
 
-$$T_{\text{percebido}} = (N_{\text{turnos}} \times T_{\text{LLM\_roundtrip}}) + T_{\text{local}}$$
-
-Onde:
-- $N_{\text{turnos}}$: Número de interações necessárias entre o cliente e o provedor da LLM.
-- $T_{\text{LLM\_roundtrip}} = 2.200\text{ms}$: Média empírica de latência de rede (HTTP/SSE) + tempo de geração de tokens em modelos de fronteira (Claude 3.5 Sonnet / GPT-4o / Gemini 1.5 Pro).
-- $T_{\text{local}}$: Tempo de execução bruta no processador local da máquina (CPU + I/O).
-
-### 2.2. Modelo de Estimativa de Tokens
-A contagem de tokens do payload trafegado foi calculada seguindo o padrão canônico de tokenização para código fonte e estruturas JSON:
-
-$$\text{Tokens} = \left\lceil \frac{\text{Bytes do Payload}}{4} \right\rceil$$
-
-### 2.3. Amostragem Estatística
-Para mitigar variações de clock e caching de sistema operacional:
-- Cada cenário foi executado em **$N = 3$ iterações independentes**.
-- São reportados: Média ($\mu$), Desvio Padrão ($\sigma$), Mínimo e Máximo para a latência local da CPU.
+### Research Hypotheses:
+- **$H_1$ (Context Window Efficiency):** Performing code filtering and graph queries locally within an isolated WebAssembly sandbox reduces payload tokens injected into the LLM by over 90% during exploratory tasks.
+- **$H_2$ (User-Perceived Latency Reduction):** Eliminating intermediate network round-trips (where each turn consumes $\sim 2,000\text{ms}$ to $2,500\text{ms}$) produces a substantial net speedup, despite local WebAssembly compilation/startup overhead.
+- **$H_3$ (Integrity & Atomicity):** An in-memory *staging-first* architecture with automated rollback guarantees 100% transactional consistency across multi-file edits, preventing partial failure corruptions inherent to unbuffered disk writes.
+- **$H_4$ (Memory Safety & Lifecycle Isolation):** Repeated sequential initialization and destruction of QuickJS WASM sandboxes within the same Node.js runtime causes zero memory leaks.
 
 ---
 
-## 3. Tabela Científica de Resultados Consolidados
+## 2. Experimental Methodology
 
-| Cenário Avaliado | Métrica | Modo Tradicional (Normal) | Codemode (WASM + Ripwire) | Ganho / Eficiência Real |
+### 2.1. Mathematical Model for User-Perceived Latency
+The developer-perceived response time in chat is formulated as:
+
+$$T_{\text{perceived}} = (N_{\text{turns}} \times T_{\text{LLM\_roundtrip}}) + T_{\text{local}}$$
+
+Where:
+- $N_{\text{turns}}$: Total round-trips between the client and the LLM inference provider.
+- $T_{\text{LLM\_roundtrip}} = 2,200\text{ms}$: Empirical average of network transit + token generation latency across frontier LLMs (Claude 3.5 Sonnet / GPT-4o / Gemini 1.5 Pro).
+- $T_{\text{local}}$: Raw CPU execution time measured locally on the developer's workstation.
+
+### 2.2. Token Estimation Model
+Payload tokens are calculated using the canonical code and JSON estimation formula:
+
+$$\text{Tokens} = \left\lceil \frac{\text{Payload Bytes}}{4} \right\rceil$$
+
+### 2.3. Statistical Treatment
+To minimize OS caching artifacts and clock jitter:
+- Every scenario is executed over **$N = 3$ independent runs**.
+- Metrics report Mean ($\mu$), Standard Deviation ($\sigma$), Minimum, and Maximum for host CPU latency.
+
+---
+
+## 3. Consolidated Scientific Results
+
+| Evaluated Scenario | Metric | Traditional Mode (Normal) | Codemode (WASM + Ripwire) | Real-World Gain |
 | :--- | :--- | :---: | :---: | :---: |
-| **Cenário 1: Mapeamento Arquitetural**<br>(Explorar topologia de 10 arquivos principais) | Turnos LLM<br>Tokens de Contexto<br>Latência Host (CPU)<br>Tempo Real Percebido<br>Atomicidade | 11 chamadas<br>~14.527 tokens<br>13.7 ± 3.1 ms<br>~24.2 segundos<br>N/A | **1 chamada**<br>**~274 tokens**<br>453.9 ± 46.2 ms<br>**~2.7 segundos**<br>N/A | **-90,9% turnos**<br>**98,1% de economia**<br>Execução local QuickJS<br>**~9.1x mais rápido**<br>Rápido e limpo |
-| **Cenário 2: Blast Radius & Callers**<br>(Chamadores e alcance de `resolvePath`) | Turnos LLM<br>Tokens de Contexto<br>Latência Host (CPU)<br>Tempo Real Percebido<br>Atomicidade | 6 chamadas<br>~15.857 tokens<br>31.8 ± 1.1 ms<br>~13.2 segundos<br>N/A | **1 chamada**<br>**~450 tokens**<br>609.6 ± 39.7 ms<br>**~2.8 segundos**<br>N/A | **-83,3% turnos**<br>**97,2% de economia**<br>PageRank + Ego-graph<br>**~4.7x mais rápido**<br>Rápido e limpo |
-| **Cenário 3: Refatoração Multi-Arquivo**<br>(Modificar 5 arquivos em lote com staging) | Turnos LLM<br>Tokens de Contexto<br>Latência Host (CPU)<br>Tempo Real Percebido<br>Atomicidade | 10 chamadas<br>~134 tokens<br>5.5 ± 0.3 ms<br>~22.0 segundos<br>**NÃO** (risco parcial) | **2 chamadas** (run + apply)<br>**~268 tokens** (com diff)<br>126.9 ± 7.4 ms<br>**~4.5 segundos**<br>**SIM (Rollback Atômico)** | **-80,0% turnos**<br>Diff unificado para revisão<br>Transacional em memória<br>**~4.9x mais rápido**<br>**Integridade 100%** |
-| **Cenário 4: Task Lens Context Assembly**<br>(Montagem direcionada para "security policy") | Turnos LLM<br>Tokens de Contexto<br>Latência Host (CPU)<br>Tempo Real Percebido<br>Atomicidade | 4 chamadas<br>~6.229 tokens<br>94.6 ± 6.0 ms<br>~8.9 segundos<br>N/A | **1 chamada**<br>**~31 tokens**<br>1267.2 ± 104.2 ms<br>**~3.5 segundos**<br>N/A | **-75,0% turnos**<br>**99,5% de economia**<br>Análise semântica Ripwire<br>**~2.6x mais rápido**<br>Foco absoluto |
+| **Scenario 1: Architectural Mapping**<br>(Scan top 10 core files) | LLM Turns<br>Context Tokens<br>Host Latency (CPU)<br>User-Perceived Latency<br>Atomicity | 11 calls<br>~14,527 tokens<br>13.7 ± 3.1 ms<br>~24.2 s<br>No | **1 call**<br>**~274 tokens**<br>453.9 ± 46.2 ms<br>**~2.7 s**<br>No | **-90.9% turns**<br>**98.1% token savings**<br>Local QuickJS engine<br>**~9.1x faster**<br>Clean & focused |
+| **Scenario 2: Blast Radius & Callers**<br>(Identify callers & impact of `resolvePath`) | LLM Turns<br>Context Tokens<br>Host Latency (CPU)<br>User-Perceived Latency<br>Atomicity | 6 calls<br>~15,857 tokens<br>31.8 ± 1.1 ms<br>~13.2 s<br>No | **1 call**<br>**~450 tokens**<br>609.6 ± 39.7 ms<br>**~2.8 s**<br>No | **-83.3% turns**<br>**97.2% token savings**<br>PageRank + Ego-graph<br>**~4.7x faster**<br>Clean & focused |
+| **Scenario 3: Multi-File Refactoring**<br>(Modify 5 files with staging) | LLM Turns<br>Context Tokens<br>Host Latency (CPU)<br>User-Perceived Latency<br>Atomicity | 10 calls<br>~134 tokens<br>5.5 ± 0.3 ms<br>~22.0 s<br>**No** (partial failure risk) | **2 calls** (run + apply)<br>**~268 tokens** (with diff)<br>126.9 ± 7.4 ms<br>**~4.5 s**<br>**Yes (Atomic Rollback)** | **-80.0% turns**<br>Unified diff for review<br>Transactional in-memory<br>**~4.9x faster**<br>**100% integrity** |
+| **Scenario 4: Task Lens Context Assembly**<br>(Targeted context for "security policy") | LLM Turns<br>Context Tokens<br>Host Latency (CPU)<br>User-Perceived Latency<br>Atomicity | 4 calls<br>~6,229 tokens<br>94.6 ± 6.0 ms<br>~8.9 s<br>No | **1 call**<br>**~31 tokens**<br>1267.2 ± 104.2 ms<br>**~3.5 s**<br>No | **-75.0% turns**<br>**99.5% token savings**<br>Semantic graph anchors<br>**~2.6x faster**<br>Zero noise |
 
 ---
 
-## 4. Análise dos Resultados por Cenário
+## 4. Scenario-by-Scenario Technical Analysis
 
-### Cenário 1: Mapeamento de Arquitetura
-- **No Modo Normal:** O agente realizou 1 `glob` seguido de 10 leituras completas (`readFile`). Cada leitura trafegou arquivos inteiros para a nuvem, somando **14.527 tokens** e **11 turnos de LLM** (~24 segundos).
-- **No Codemode:** Um único script executou `tools["ripwire.map"]({ path: "src", topK: 15 })`, retornando apenas a lista compacta de símbolos PageRank calculada localmente. O consumo despencou para **274 tokens (98,1% de economia)** e a tarefa concluiu em **2,7 segundos (9.1x mais rápido)**.
+### Scenario 1: Architectural Mapping
+- **Traditional Mode:** The agent issued 1 `glob` followed by 10 full `readFile` operations. Each read streamed entire files to the cloud, consuming **14,527 tokens** and **11 LLM turns** (~24.2 seconds).
+- **Codemode:** A single script called `tools["ripwire.map"]({ path: "src", topK: 15 })`, returning only the compact PageRank-ranked symbol table calculated locally. Payload dropped to **274 tokens (98.1% savings)** and execution finished in **2.7 seconds (9.1x faster)**.
 
-### Cenário 2: Blast Radius & Callers
-- **No Modo Normal:** Para descobrir quem chama `resolvePath`, o agente fez 1 `grep` retornando múltiplos matches e depois precisou abrir 5 arquivos para inspecionar os imports e dependências circundantes (**15.857 tokens** consumidos).
-- **No Codemode:** O script combinou `ripwire.callers` e `ripwire.impact` diretamente no sandbox. A LLM recebeu apenas o resumo estruturado com a contagem de chamadores e os arquivos dependentes em **450 tokens (97,2% de redução)**.
+### Scenario 2: Blast Radius & Callers
+- **Traditional Mode:** To uncover callers of `resolvePath`, the agent performed 1 `grep` returning multiple matches, followed by reading 5 separate files to manually trace imports (**15,857 tokens**).
+- **Codemode:** The script combined `ripwire.callers` and `ripwire.impact` inside the sandbox. The LLM received only the structured summary of caller counts and transitive dependency reach in **450 tokens (97.2% reduction)**.
 
-### Cenário 3: Refatoração Multi-Arquivo e Staging
-- **No Modo Normal:** Para editar 5 arquivos, o agente disparou 5 leituras e 5 substituições diretas no disco. Se a escrita falhar no 4º arquivo, os 3 primeiros já foram modificados e o projeto fica em estado inconsistente.
-- **No Codemode:** As 5 substituições ocorreram em staging na memória em **126ms**. A LLM recebeu o diff unificado consolidado para revisão e, ao aprovar, o `applyStaged` aplicou todas as alterações atomicamente com backup e verificação de concorrência. A latência total percebida caiu de 22s para **4,5s (~4.9x mais rápido)** com garantia total de rollback.
+### Scenario 3: Multi-File Refactoring & Staging
+- **Traditional Mode:** The agent performed 5 reads and 5 direct unbuffered disk writes. If an I/O error occurred on the 4th file, the previous 3 were already modified, leaving the repository corrupted.
+- **Codemode:** All 5 edits were staged in memory in **126.9 ms**. The agent generated a unified diff for developer review. Upon approval, `codemode_apply` committed all files atomically with backup and optimistic concurrency checks. Total user-perceived time dropped from 22.0s to **4.5s (~4.9x faster)** with 100% rollback guarantee.
 
-### Cenário 4: Task Lens (`ripwire.for`)
-- **No Modo Normal:** O agente realizou greps sucessivos por palavras-chave ("PathPolicy", "SecurityError", "DOS_RESERVED") e leu os arquivos suspeitos, gerando ruído e consumindo **6.229 tokens**.
-- **No Codemode:** `ripwire.for` analisou a intenção semântica da tarefa e retornou exatamente os *anchors* de código relevantes com apenas **31 tokens (99,5% de economia)**.
-
----
-
-## 5. Teste de Estresse e Estabilidade de Memória (Cenário 5)
-
-Foi submetida uma carga contínua de **10 ciclos consecutivos** de criação, execução de scripts com alocação intensiva de arrays e destruição do sandbox QuickJS WASM no mesmo processo Node.js:
-- **Tempo Total dos 10 Ciclos:** 1.073,4 ms (~107,3 ms por ciclo completo de inicialização e execução).
-- **RSS Inicial do Processo:** 134,2 MB.
-- **RSS Final do Processo:** 105,2 MB.
-- **Variação de Memória:** $-29,04\text{ MB}$ (liberação ativa via Garbage Collection do V8 e do QuickJS).
-- **Conclusão:** Ausência total de vazamento de memória ou acúmulo de instâncias WebAssembly órfãs.
+### Scenario 4: Task Lens (`ripwire.for`)
+- **Traditional Mode:** The agent made successive keyword searches ("PathPolicy", "SecurityError", "DOS_RESERVED") and read suspected files, accumulating **6,229 tokens** of noisy context.
+- **Codemode:** `ripwire.for` semantically parsed the task goal and returned precise code anchors with only **31 tokens (99.5% reduction)**.
 
 ---
 
-## 6. Resumo e Conclusões
+## 5. Memory Stress & Lifecycle Safety Test (Scenario 5)
 
-1. **Aceleração da Experiência do Desenvolvedor:** Redução média de **5.3x no tempo percebido**, chegando a **9.1x mais rápido** em exploração de código.
-2. **Economia Financeira e de Contexto:** Economia de até **99,5% dos tokens** de payload trafegados para a nuvem.
-3. **Segurança e Confiabilidade:** Eliminação de quebras parciais em refatorações multi-arquivo por meio do motor transacional de staging.
+A continuous workload of **10 sequential cycles** of sandbox instantiation, heavy array memory allocation, and teardown was executed inside a single Node.js process:
+- **Total Execution Time (10 Cycles):** 1,073.4 ms (~107.3 ms per cycle).
+- **Initial Process RSS:** 134.2 MB.
+- **Final Process RSS:** 105.2 MB.
+- **Memory Variance:** $-29.04\text{ MB}$ (effective heap compaction via V8 and QuickJS garbage collection).
+- **Conclusion:** Zero memory leaks and no orphaned WebAssembly instances.
 
 ---
 
-## 7. Como Reproduzir Este Benchmark
+## 6. Summary of Findings
 
-Qualquer usuário pode reproduzir integralmente estes resultados executando na raiz do repositório:
+1. **User Experience Acceleration:** Average perceived speedup of **5.3x**, reaching **9.1x faster** for codebase exploration.
+2. **Context Efficiency:** Up to **99.5% token reduction** for exploratory analysis.
+3. **Transactional Safety:** Staging-first model completely eliminates partial-failure corruptions during multi-file refactoring.
+
+---
+
+## 7. How to Reproduce
+
+Execute the benchmark suite from the root of the repository:
 
 ```bash
 npm run benchmark

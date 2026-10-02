@@ -7,110 +7,113 @@
 [![MCP Protocol](https://img.shields.io/badge/Protocol-Model%20Context%20Protocol%20v1.6-green)](https://modelcontextprotocol.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **Mapeamento de código em sub-segundos, análise de blast radius via Personalized PageRank e refatoração atômica multi-arquivo para o Google Antigravity.**
+> **Sub-second code navigation, Personalized PageRank blast radius analysis, and atomic multi-file refactoring for Google Antigravity.**
 
 ---
 
-## 🎯 Por que o Codemode?
+## 🎯 Why Codemode?
 
-Modelos de linguagem tradicionais interagem com repositórios através de dezenas de chamadas de ferramentas sequenciais na nuvem (*tool calling loop*):
-`grep` ➡️ aguarda LLM ➡️ `read_file` ➡️ aguarda LLM ➡️ `replace_file` ➡️ ...
+Traditional AI agents interact with codebases through iterative, sequential tool calls across the cloud (*tool-calling loop*):
+`grep` ➡️ wait for LLM ➡️ `read_file` ➡️ wait for LLM ➡️ `replace_file` ➡️ ...
 
-Esse padrão tem três problemas críticos:
-1. **Queima massiva de contexto:** Milhares de linhas de código intermediário poluem a janela de contexto.
-2. **Alta latência:** Cada turno de rede com a nuvem custa de 2 a 5 segundos (10 turnos = ~30s de espera).
-3. **Falta de atomicidade:** Se a IA falhar na 4ª edição de um lote de 5 arquivos, o disco fica corrompido em estado parcial.
+This pattern introduces three critical bottlenecks:
+1. **Context Window Exhaustion:** Thousands of lines of intermediate source code clutter the LLM context.
+2. **High Latency:** Every cloud round-trip costs 2 to 5 seconds (10 round-trips = ~25–30 seconds of idle waiting).
+3. **Lack of Transactionality:** If an agent fails on the 4th file of a 5-file refactor, the repository is left in a broken, half-modified state.
 
-**O Codemode inverte essa lógica:** Em vez de trazer gigabytes de código para a LLM, a LLM escreve um script JavaScript assíncrono e compacto que executa **localmente, dentro do sandbox WebAssembly na máquina do usuário**, filtrando e transformando dados na velocidade da memória.
+**Codemode flips this paradigm:** Instead of streaming entire files to the cloud, the LLM emits a compact, asynchronous JavaScript script that runs **locally inside a secure WebAssembly sandbox on the developer's machine**, filtering, navigating, and transforming code at memory speed.
 
 ---
 
-## 🔬 Metodologia e Resultados de Benchmark
+## 🔬 Benchmark Methodology & Scientific Results
 
-Para quantificar a vantagem do Codemode contra o modo tradicional de *tool calling*, desenvolvemos uma bateria de benchmark automatizada e estatisticamente controlada.
+To rigorously evaluate Codemode against traditional sequential tool calling, we established an automated, statistically controlled benchmark suite.
 
-### Metodologia de Avaliação
-- **Modelo de Latência Real Percebida pelo Usuário:**
-  $$T_{\text{percebido}} = (N_{\text{turnos}} \times T_{\text{LLM\_roundtrip}}) + T_{\text{local}}$$
-  Onde $T_{\text{LLM\_roundtrip}} = 2.200\text{ms}$ (média empírica de latência de rede HTTP/SSE + geração de tokens em modelos de ponta como Claude 3.5 Sonnet / GPT-4o / Gemini 1.5 Pro) e $T_{\text{local}}$ é a latência bruta de CPU no host.
-- **Modelo de Estimativa de Tokens:** $\text{Tokens} = \lceil \text{Bytes do Payload} / 4 \rceil$ (canônico para código-fonte e estruturas JSON).
-- **Rigor Estatístico:** Amostragem com $N=3$ repetições independentes com cálculo de Média ($\mu$) e Desvio Padrão ($\sigma$).
-- **Ambiente de Teste:** Windows 11 x64, 16 CPUs, Node.js v24.19.0, QuickJS WASI 3.6.2, Ripwire v0.6.5.
+### Evaluation Methodology
+- **User-Perceived Latency Model:**
+  $$T_{\text{perceived}} = (N_{\text{turns}} \times T_{\text{LLM\_roundtrip}}) + T_{\text{local}}$$
+  Where $T_{\text{LLM\_roundtrip}} = 2,200\text{ms}$ (industry empirical average for network transit + token generation on frontier models like Claude 3.5 Sonnet / GPT-4o / Gemini 1.5 Pro), and $T_{\text{local}}$ is raw host CPU time.
+- **Token Estimation Model:** $\text{Tokens} = \lceil \text{Payload Bytes} / 4 \rceil$ (canonical heuristic for code and JSON payloads).
+- **Statistical Rigor:** $N = 3$ independent runs reporting Mean ($\mu$) and Standard Deviation ($\sigma$) for CPU latency.
+- **Hardware & Environment:** Windows 11 x64, 16 CPUs, Node.js v24.19.0, QuickJS WASI 3.6.2, Ripwire v0.6.5.
 
-### Tabela Científica Consolidada
+### Consolidated Scientific Results
 
-| Cenário Avaliado | Métrica | Modo Tradicional (Normal) | Codemode (WASM + Ripwire) | Ganho / Eficiência Real |
+| Evaluated Scenario | Metric | Traditional Mode (Normal) | Codemode (WASM + Ripwire) | Real-World Gain |
 | :--- | :--- | :---: | :---: | :---: |
-| **1. Mapeamento Arquitetural**<br>(Explorar topologia de 10 arquivos) | Turnos LLM<br>Tokens de Contexto<br>Latência Host (CPU)<br>Tempo Real Usuário<br>Atomicidade | 11 chamadas<br>~14.527 tokens<br>13.7 ± 3.1 ms<br>~24.2 s<br>NÃO | **1 chamada**<br>**~274 tokens**<br>453.9 ± 46.2 ms<br>**~2.7 s**<br>NÃO | **-90,9% turnos**<br>**98,1% de economia**<br>Motor local QuickJS<br>**~9.1x mais rápido**<br>Rápido |
-| **2. Blast Radius & Callers**<br>(Chamadores e alcance de `resolvePath`) | Turnos LLM<br>Tokens de Contexto<br>Latência Host (CPU)<br>Tempo Real Usuário<br>Atomicidade | 6 chamadas<br>~15.857 tokens<br>31.8 ± 1.1 ms<br>~13.2 s<br>NÃO | **1 chamada**<br>**~450 tokens**<br>609.6 ± 39.7 ms<br>**~2.8 s**<br>NÃO | **-83,3% turnos**<br>**97,2% de economia**<br>PageRank + Ego-graph<br>**~4.7x mais rápido**<br>Rápido |
-| **3. Refatoração Multi-Arquivo**<br>(Modificar 5 arquivos em lote com staging) | Turnos LLM<br>Tokens de Contexto<br>Latência Host (CPU)<br>Tempo Real Usuário<br>Atomicidade | 10 chamadas<br>~134 tokens<br>5.5 ± 0.3 ms<br>~22.0 s<br>**NÃO** (risco parcial) | **2 chamadas** (run + apply)<br>**~268 tokens** (com diff)<br>126.9 ± 7.4 ms<br>**~4.5 s**<br>**SIM (Rollback Atômico)** | **-80,0% turnos**<br>Diff unificado para revisão<br>Transacional em memória<br>**~4.9x mais rápido**<br>**Integridade 100%** |
-| **4. Task Lens Context Gathering**<br>(Montagem direcionada para "security policy") | Turnos LLM<br>Tokens de Contexto<br>Latência Host (CPU)<br>Tempo Real Usuário<br>Atomicidade | 4 chamadas<br>~6.229 tokens<br>94.6 ± 6.0 ms<br>~8.9 s<br>NÃO | **1 chamada**<br>**~31 tokens**<br>1267.2 ± 104.2 ms<br>**~3.5 s**<br>NÃO | **-75,0% turnos**<br>**99,5% de economia**<br>Análise semântica Ripwire<br>**~2.6x mais rápido**<br>Foco absoluto |
+| **1. Architectural Mapping**<br>(Scan top 10 core files) | LLM Turns<br>Context Tokens<br>Host Latency (CPU)<br>User-Perceived Latency<br>Atomicity | 11 calls<br>~14,527 tokens<br>13.7 ± 3.1 ms<br>~24.2 s<br>No | **1 call**<br>**~274 tokens**<br>453.9 ± 46.2 ms<br>**~2.7 s**<br>No | **-90.9% turns**<br>**98.1% token savings**<br>Local QuickJS engine<br>**~9.1x faster**<br>Clean & focused |
+| **2. Blast Radius & Callers**<br>(Identify callers & impact of `resolvePath`) | LLM Turns<br>Context Tokens<br>Host Latency (CPU)<br>User-Perceived Latency<br>Atomicity | 6 calls<br>~15,857 tokens<br>31.8 ± 1.1 ms<br>~13.2 s<br>No | **1 call**<br>**~450 tokens**<br>609.6 ± 39.7 ms<br>**~2.8 s**<br>No | **-83.3% turns**<br>**97.2% token savings**<br>PageRank + Ego-graph<br>**~4.7x faster**<br>Clean & focused |
+| **3. Multi-File Refactoring**<br>(Modify 5 files with validation) | LLM Turns<br>Context Tokens<br>Host Latency (CPU)<br>User-Perceived Latency<br>Atomicity | 10 calls<br>~134 tokens<br>5.5 ± 0.3 ms<br>~22.0 s<br>**No** (partial failure risk) | **2 calls** (run + apply)<br>**~268 tokens** (with diff)<br>126.9 ± 7.4 ms<br>**~4.5 s**<br>**Yes (Atomic Rollback)** | **-80.0% turns**<br>Unified diff for review<br>Transactional in-memory<br>**~4.9x faster**<br>**100% integrity** |
+| **4. Task Lens Context Gathering**<br>(Targeted context for "security policy") | LLM Turns<br>Context Tokens<br>Host Latency (CPU)<br>User-Perceived Latency<br>Atomicity | 4 calls<br>~6,229 tokens<br>94.6 ± 6.0 ms<br>~8.9 s<br>No | **1 call**<br>**~31 tokens**<br>1267.2 ± 104.2 ms<br>**~3.5 s**<br>No | **-75.0% turns**<br>**99.5% token savings**<br>Semantic graph anchors<br>**~2.6x faster**<br>Zero noise |
 
-> **Teste de Estresse de Memória (Cenário 5):** 10 ciclos consecutivos de inicialização, execução intensiva e desmontagem do QuickJS WASM completados em 1.073ms (~107ms/ciclo), apresentando **zero vazamento de memória** (variação de RSS negativa de -29,04 MB via Garbage Collection ativo).
+> **Memory & Lifecycle Stress Test (Scenario 5):** 10 consecutive cycles of initializing, executing memory-intensive scripts, and tearing down QuickJS WASM sandboxes completed in 1,073 ms (~107 ms/cycle) with **zero memory leaks** (active RSS variation of -29.04 MB due to prompt V8 and QuickJS garbage collection).
 >
-> 📖 Para a análise aprofundada de cada cenário, consulte o [Relatório Científico Completo (docs/BENCHMARK_CODEMODE.md)](docs/BENCHMARK_CODEMODE.md).
+> 📖 For the in-depth technical analysis of each scenario, see the [Full Scientific Benchmark Report (docs/BENCHMARK_CODEMODE.md)](docs/BENCHMARK_CODEMODE.md).
 >
-> 🔄 Para reproduzir estes números em sua máquina: `npm run benchmark`.
-
-## ⚡ Principais Capacidades
-
-### 1. Sandbox Isolado em WebAssembly (QuickJS WASI)
-- Execução segura e estéril: sem acesso arbitrário a rede (`fetch`), processos (`child_process`) ou eval não-controlado.
-- Limite estrito de tempo de execução (watchdog de 30s) e teto de memória (128 MB).
-- Comunicação bidirecional assíncrona por protocolo binário IPC em memória.
-
-### 2. Navegação Semântica com Ripwire
-- Grafo de código construído dinamicamente com **Personalized PageRank**.
-- Métodos nativos:
-  - `tools["ripwire.map"]`: Topologia arquitetural e arquivos mais influentes do repositório.
-  - `tools["ripwire.callers"]`: Identifica chamadores diretos de qualquer função ou interface.
-  - `tools["ripwire.impact"]`: Calcula o *blast radius* transitivo antes de você alterar uma linha.
-  - `tools["ripwire.uses"]`: Usos, leituras, instanciações e implementações.
-  - `tools["ripwire.for"]`: Task Lens focada para o objetivo de desenvolvimento.
-
-### 3. Filesystem com Staging e Rollback Atômico
-- **Staging-first:** Nenhuma alteração é gravada diretamente no disco durante a execução do script.
-- Geração de **unified diff** para inspeção antes do commit.
-- Validação otimista de concorrência com o disco real antes da aplicação.
-- Rollback automático: se qualquer arquivo falhar na gravação em lote, todos os arquivos restauram seu estado anterior intacto.
-
-### 4. Camada de Segurança para Windows NTFS
-- Proteção contra caminhos UNC (`\\server\share`) e namespaces de dispositivo Win32 (`\\?\`).
-- Bloqueio de Alternate Data Streams (ADS) e nomes reservados do MS-DOS (`CON`, `PRN`, `AUX`, `NUL`, `COM1..9`, `LPT1..9`).
-- Imunidade a condições de corrida TOCTOU no NTFS usando identidade de arquivo de 64 bits (`fs.stat(..., { bigint: true })`).
-- Proteção contra ReDoS catastrófico isolando regexes em **Worker Threads dedicadas com watchdog de 600ms**.
+> 🔄 Reproduce these benchmarks on your machine: `npm run benchmark`.
 
 ---
 
-## 🚀 Instalação Rápida
+## ⚡ Core Architecture & Features
 
-Para instalar e habilitar o Codemode em sua máquina:
+### 1. Isolated WebAssembly Sandbox (QuickJS WASI)
+- Sterile, isolated environment: no unauthorized network access (`fetch`), arbitrary process execution (`child_process`), or unconstrained `eval`.
+- Hard execution deadlines (30s execution watchdog) and memory ceiling (128 MB).
+- Fast bidirectional binary IPC protocol between Node.js host and WASM guest.
+
+### 2. Semantic Code Intelligence with Ripwire
+- Code graph built and queried in sub-seconds using **Personalized PageRank**.
+- Exposed APIs inside scripts:
+  - `tools["ripwire.map"]`: Architectural overview and most influential repository symbols.
+  - `tools["ripwire.callers"]`: Direct 1-hop callers of functions or interfaces.
+  - `tools["ripwire.impact"]`: Full transitive blast radius before modifying code.
+  - `tools["ripwire.uses"]`: Usages, extensions, reads, and writes across files.
+  - `tools["ripwire.for"]`: Task Lens semantic context assembly for natural language tasks.
+  - `tools["ripwire.around"]`: Ego-graph surrounding a target symbol up to a specified depth.
+
+### 3. Staging-First Filesystem with Atomic Rollback
+- **Zero Real Disk Mutation during `codemode_run`:** All changes are buffered in-memory.
+- Automatic **unified diff** generation for human review.
+- Optimistic concurrency checking with disk state prior to commit.
+- Transactional rollback: if I/O fails on any file in a batch, all previous modifications are atomically reverted.
+
+### 4. Windows NTFS Hardened Security Layer
+- Strict path containment blocking UNC paths (`\\server\share`) and Win32 device namespaces (`\\?\`).
+- Rejection of Alternate Data Streams (ADS) and reserved MS-DOS device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1..9`, `LPT1..9`).
+- 64-bit BigInt file identity verification (`dev` + `ino`) preventing TOCTOU symlink races on NTFS.
+- Catastrophic backtracking (ReDoS) immunity: regex evaluation isolated in **dedicated Worker Threads with a 600ms watchdog**.
+
+---
+
+## 🚀 Quick Start
+
+To install and build Codemode on your machine:
 
 ```bash
-# 1. Clone o repositório
+# 1. Clone the repository
 git clone https://github.com/mjabbur/antigravity-codemode.git
 cd antigravity-codemode
 
-# 2. Instale as dependências e compile
+# 2. Install dependencies & build
 npm run install:server
 npm run build
 
-# 3. Valide o ambiente executando os testes
+# 3. Verify installation with automated tests
 npm test
 ```
 
-📖 **Consulte o guia completo com passo a passo para configuração Global ou por Projeto em:**  
-👉 **[Guia Detalhado de Instalação (INSTALL.md)](INSTALL.md)**
+📖 **For complete step-by-step setup (Global or Workspace-level in Google Antigravity), see:**  
+👉 **[Detailed Installation Guide (INSTALL.md)](INSTALL.md)**
 
 ---
 
-## 💡 Exemplos de Uso
+## 💡 Code Examples
 
-Uma vez instalado, você pode acionar o comando `/codemode` no Google Antigravity ou o agente utilizará as ferramentas MCP automaticamente quando julgar mais econômico.
+Once installed, use the `/codemode` slash command in Google Antigravity or let the agent autonomously invoke MCP tools when cost-effective.
 
-### Exemplo 1: Orientação e Chamadores no Repositório
+### Example 1: Codebase Orientation & Caller Analysis
 ```javascript
-// Localiza os arquivos centrais e descobre quem consome o método `resolvePath`
+// Map repository architecture and locate all callers of `resolvePath`
 const map = await tools["ripwire.map"]({ topK: 10 });
 const callers = await tools["ripwire.callers"]({ symbol: "resolvePath" });
 
@@ -122,9 +125,9 @@ return {
 };
 ```
 
-### Exemplo 2: Refatoração Multi-Arquivo com Staging
+### Example 2: Multi-File Staged Refactoring
 ```javascript
-// Substitui uma versão em todos os package.json de forma segura
+// Safely update version strings across package.json files
 const files = await tools.glob({ pattern: "**/package.json" });
 
 for (const file of files) {
@@ -138,71 +141,71 @@ for (const file of files) {
   }
 }
 
-// O resultado conterá o diff unificado em staging
+// Result outputs the unified diff in staging
 return { stagedCount: files.length };
 ```
 
-Após inspecionar o diff retornado, basta aprovar a aplicação chamando `codemode_apply` (ou `codemode_discard` para cancelar).
+After inspecting the staged diff returned by `codemode_run`, approve changes by executing `codemode_apply` (or cancel with `codemode_discard`).
 
 ---
 
-## 📁 Estrutura do Repositório
+## 📁 Repository Structure
 
 ```
 antigravity-codemode/
 ├── .agents/
-│   ├── mcp_config.json                   # Configuração de exemplo do servidor MCP
+│   ├── mcp_config.json                   # Sample Antigravity MCP configuration
 │   ├── plugins/codemode/
-│   │   ├── plugin.json                   # Manifesto do plugin
-│   │   └── server/                       # Motor Node.js / TypeScript
-│   │       ├── specs/                    # Especificações formais SDD (Fases 1 a 4)
+│   │   ├── plugin.json                   # Plugin manifest
+│   │   └── server/                       # Node.js / TypeScript engine
+│   │       ├── specs/                    # Formal SDD specifications (Phases 1 to 4)
 │   │       ├── src/
-│   │       │   ├── sandbox/              # QuickJS WASM, Host, Worker e Protocolo IPC
-│   │       │   ├── security/             # PathPolicy com contenção Windows NTFS
+│   │       │   ├── sandbox/              # QuickJS WASM, Host, Worker & IPC protocol
+│   │       │   ├── security/             # PathPolicy with Windows NTFS containment
 │   │       │   ├── tools/                # fs-read, fs-write (staging), ripwire, regex
-│   │       │   └── mcp/                  # Servidor MCP stdio (codemode_run, apply, discard)
-│   │       ├── test/                     # 48 testes unitários/invariantes no Vitest
-│   │       └── benchmarks/               # Script do benchmark comparativo
+│   │       │   └── mcp/                  # Stdio MCP server (codemode_run, apply, discard)
+│   │       ├── test/                     # 48 Vitest unit & invariant tests
+│   │       └── benchmarks/               # Automated statistical benchmark suite
 │   ├── rules/
-│   │   └── codemode-policy.md            # Regra de priorização econômica para o agente
+│   │   └── codemode-policy.md            # Agent cost-prioritization guidelines
 │   └── skills/
-│       └── codemode/SKILL.md             # Instruções e comandos do Codemode (/codemode)
+│       └── codemode/SKILL.md             # Slash command instructions (/codemode)
 ├── bin/
-│   └── ripwire-0.6.5-windows-x64/        # Binário nativo do Ripwire v0.6.5
+│   └── ripwire-0.6.5-windows-x64/        # Native Windows x64 Ripwire binary
 ├── docs/
-│   ├── GUIA_DE_USO_CODEMODE.md           # Guia operacional detalhado e receitas de código
-│   ├── BENCHMARK_CODEMODE.md             # Relatório empírico com métricas de tokens e latência
-│   ├── PLANO_CODEMODE.md                 # Arquitetura e plano diretor
-│   └── TIME_E_METODOLOGIA.md             # Governança e metodologia Spec-Driven Development
-├── INSTALL.md                            # Guia passo a passo de instalação
-├── HANDOFF.md                            # Relatório de passagem de bastão operacional
-├── MEMORY.md                             # Memória técnica e aprendizados de engenharia
-└── package.json                          # Scripts de conveniência na raiz (build, test, benchmark)
+│   ├── USAGE_GUIDE.md                    # In-depth usage guide and code recipes
+│   ├── BENCHMARK_CODEMODE.md             # Full scientific benchmark report & methodology
+│   ├── PLANO_CODEMODE.md                 # Architectural design and master plan
+│   └── TIME_E_METODOLOGIA.md             # SDD governance and agent collaboration model
+├── INSTALL.md                            # Complete installation & setup guide
+├── HANDOFF.md                            # Operational handoff report
+├── MEMORY.md                             # Technical session memory and engineering findings
+└── package.json                          # Convenience root scripts (build, test, benchmark)
 ```
 
 ---
 
-## 🛠️ Comandos de Desenvolvimento
+## 🛠️ Development Commands
 
-Na raiz do repositório:
+From the root directory:
 
-- **Instalar dependências:** `npm run install:server`
-- **Compilar TypeScript:** `npm run build`
-- **Executar testes:** `npm test`
-- **Rodar benchmark:** `npm run benchmark`
-
----
-
-## 📚 Documentação Adicional
-
-- [Guia de Instalação (INSTALL.md)](INSTALL.md)
-- [Guia de Uso e Receitas (docs/GUIA_DE_USO_CODEMODE.md)](docs/GUIA_DE_USO_CODEMODE.md)
-- [Relatório de Benchmark (docs/BENCHMARK_CODEMODE.md)](docs/BENCHMARK_CODEMODE.md)
-- [Passagem de Bastão Operacional (HANDOFF.md)](HANDOFF.md)
-- [Memória de Sessão e Decisões de Engenharia (MEMORY.md)](MEMORY.md)
+- **Install server dependencies:** `npm run install:server`
+- **Build TypeScript:** `npm run build`
+- **Run automated test suite:** `npm test`
+- **Execute benchmark suite:** `npm run benchmark`
 
 ---
 
-## 📄 Licença
+## 📚 Additional Documentation
 
-Distribuído sob a licença [MIT](LICENSE).
+- [Installation Guide (INSTALL.md)](INSTALL.md)
+- [Usage Guide & Code Recipes (docs/USAGE_GUIDE.md)](docs/USAGE_GUIDE.md)
+- [Scientific Benchmark Report (docs/BENCHMARK_CODEMODE.md)](docs/BENCHMARK_CODEMODE.md)
+- [Operational Handoff (HANDOFF.md)](HANDOFF.md)
+- [Engineering Memory & Lessons Learned (MEMORY.md)](MEMORY.md)
+
+---
+
+## 📄 License
+
+Distributed under the [MIT License](LICENSE).

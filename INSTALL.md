@@ -1,64 +1,64 @@
-# Guia de Instalação: Antigravity Codemode
+# Installation Guide: Antigravity Codemode
 
-Este guia descreve como instalar, compilar e configurar o **Plugin Codemode para Google Antigravity** em sua máquina, seja para uso **Global** (habilitado automaticamente em qualquer projeto) ou **Local por Workspace** (específico de um repositório).
+This guide walks you through compiling, installing, and configuring the **Codemode Plugin for Google Antigravity** on your machine. You can install it either **Globally** (automatically active across all projects) or **Locally per Workspace** (scoped to a specific repository).
 
 ---
 
-## 1. Pré-requisitos
+## 1. Prerequisites
 
-Antes de iniciar, certifique-se de possuir em seu ambiente:
-- **Node.js**: versão `>= 20.0.0` (recomendado v22 ou v24).
-- **npm**: versão `>= 9.0.0`.
+Ensure your development environment meets the following requirements:
+- **Node.js**: version `>= 20.0.0` (v22 or v24 LTS recommended).
+- **npm**: version `>= 9.0.0`.
 - **Git**.
-- **Google Antigravity**: IDE, Desktop 2.0 ou CLI (`agy`).
-- **Sistema Operacional**: Windows 10/11 x64, Linux x64 ou macOS (o binário nativo do Ripwire para Windows x64 já acompanha este repositório).
+- **Google Antigravity**: IDE, Desktop 2.0 application, or CLI (`agy`).
+- **Operating System**: Windows 10/11 x64, Linux x64, or macOS (the native Windows x64 Ripwire binary is bundled in `bin/`).
 
 ---
 
-## 2. Clonar e Compilar o Projeto
+## 2. Clone & Build the Project
 
-Abra o terminal (PowerShell, Git Bash ou WSL) e clone o repositório:
+Open your terminal (PowerShell, bash, or WSL) and clone the repository:
 
 ```bash
-# 1. Clone o repositório
+# 1. Clone the repository
 git clone https://github.com/mjabbur/antigravity-codemode.git
 cd antigravity-codemode
 
-# 2. Instale as dependências do servidor QuickJS WASM + MCP
+# 2. Install QuickJS WASM + MCP server dependencies
 npm run install:server
 
-# 3. Compile o código TypeScript para JavaScript (dist/)
+# 3. Compile TypeScript to JavaScript (dist/)
 npm run build
 
-# 4. Execute a suíte de 48 testes determinísticos para validar o ambiente
+# 4. Run the 48-test deterministic test suite to verify your setup
 npm test
 ```
 
-> **Verificação:** Todos os 48 testes unitários (Sandbox QuickJS, Camada de Segurança Windows, Ripwire e Servidor MCP) devem passar com 100% de sucesso.
+> **Verification:** All 48 Vitest unit and invariant tests (QuickJS Sandbox, Windows Security, Ripwire, and MCP Server) should pass with 100% success.
 
 ---
 
-## 3. Opção A: Instalação Global (Recomendada)
+## 3. Option A: Global Installation (Recommended)
 
-A instalação global registra o servidor MCP e as skills no diretório central do Antigravity (`~/.gemini/config/`), disponibilizando as ferramentas `codemode_run`, `codemode_apply`, `codemode_discard` e o comando `/codemode` **automaticamente em todos os seus projetos**, sem necessidade de configurar nada projeto a projeto.
+Global installation registers the MCP server and skills in Antigravity's global configuration directory (`~/.gemini/config/`). This makes `codemode_run`, `codemode_apply`, `codemode_discard`, and the `/codemode` slash command **automatically available across all projects on your machine** without per-project configuration.
 
-### Instalação Automática via PowerShell (Windows):
+### Automated Setup via PowerShell (Windows):
 
-Substitua `C:/caminho/para/antigravity-codemode` pelo caminho absoluto onde você clonou o repositório:
+Replace `C:/path/to/antigravity-codemode` with the absolute path where you cloned the repository:
 
 ```powershell
-$REPO_PATH = "C:/Dev/antigravity-codemode" # ajuste para o caminho real da sua máquina
+$REPO_PATH = "C:/Dev/antigravity-codemode" # adjust to your actual clone directory
 
-# 1. Criar diretórios globais do Antigravity
+# 1. Create global Antigravity directories
 New-Item -ItemType Directory -Force -Path "$HOME\.gemini\config\skills\codemode"
 New-Item -ItemType Directory -Force -Path "$HOME\.gemini\config\plugins\codemode\skills\codemode"
 
-# 2. Copiar a Skill e o Manifesto
+# 2. Copy Skill and Manifest files
 Copy-Item "$REPO_PATH\.agents\skills\codemode\SKILL.md" "$HOME\.gemini\config\skills\codemode\SKILL.md" -Force
 Copy-Item "$REPO_PATH\.agents\skills\codemode\SKILL.md" "$HOME\.gemini\config\plugins\codemode\skills\codemode\SKILL.md" -Force
 Copy-Item "$REPO_PATH\.agents\plugins\codemode\plugin.json" "$HOME\.gemini\config\plugins\codemode\plugin.json" -Force
 
-# 3. Configurar o MCP Global (~/.gemini/config/mcp_config.json)
+# 3. Configure Global MCP Server (~/.gemini/config/mcp_config.json)
 $mcpJson = @"
 {
   "mcpServers": {
@@ -77,12 +77,12 @@ $mcpJson = @"
 Set-Content -Path "$HOME\.gemini\config\mcp_config.json" -Value $mcpJson -Encoding UTF8
 Copy-Item "$HOME\.gemini\config\mcp_config.json" "$HOME\.gemini\config\plugins\codemode\mcp_config.json" -Force
 
-Write-Host "✅ Codemode instalado globalmente com sucesso!" -ForegroundColor Green
+Write-Host "✅ Codemode successfully installed and registered globally!" -ForegroundColor Green
 ```
 
-### Configuração Manual do MCP:
+### Manual MCP Server Configuration:
 
-Se você já possuir outros servidores MCP cadastrados em `~/.gemini/config/mcp_config.json`, adicione a chave `"codemode"` dentro de `"mcpServers"`:
+If you already have existing MCP servers configured in `~/.gemini/config/mcp_config.json`, simply add the `"codemode"` entry to your `"mcpServers"` object:
 
 ```json
 {
@@ -90,10 +90,10 @@ Se você já possuir outros servidores MCP cadastrados em `~/.gemini/config/mcp_
     "codemode": {
       "command": "node",
       "args": [
-        "C:/caminho/para/antigravity-codemode/.agents/plugins/codemode/server/dist/mcp/server.js"
+        "C:/path/to/antigravity-codemode/.agents/plugins/codemode/server/dist/mcp/server.js"
       ],
       "env": {
-        "RIPWIRE_PATH": "C:/caminho/para/antigravity-codemode/bin/ripwire-0.6.5-windows-x64/ripwire.exe"
+        "RIPWIRE_PATH": "C:/path/to/antigravity-codemode/bin/ripwire-0.6.5-windows-x64/ripwire.exe"
       }
     }
   }
@@ -101,66 +101,66 @@ Se você já possuir outros servidores MCP cadastrados em `~/.gemini/config/mcp_
 ```
 
 > [!TIP]
-> Em arquivos JSON no Windows, utilize sempre barras normais (`/`) ou barras invertidas duplicadas (`\\`) nos caminhos.
+> In JSON files on Windows, always use forward slashes (`/`) or double backslashes (`\\`) in path values.
 
 ---
 
-## 4. Opção B: Instalação por Workspace / Projeto
+## 4. Option B: Project / Workspace-Level Installation
 
-Se você preferir disponibilizar o Codemode apenas dentro de um repositório específico da sua equipe (por exemplo, compartilhando com o time via Git):
+If you prefer to restrict Codemode to a specific project (e.g., committing `.agents` to VCS for your team):
 
-1. Copie o diretório `.agents/` deste repositório para a raiz do seu projeto de destino:
+1. Copy the `.agents/` directory from this repository into the root of your target project:
    ```bash
-   cp -r .agents/ /caminho/do/seu/projeto/
+   cp -r .agents/ /path/to/your/project/
    ```
-2. No arquivo `/caminho/do/seu/projeto/.agents/mcp_config.json`, certifique-se de que os caminhos para o `server.js` compilado e para o `ripwire.exe` apontem corretamente para os arquivos na sua máquina.
-3. Ao abrir o projeto no Antigravity, o agente detectará automaticamente o `.agents/` local.
+2. In `/path/to/your/project/.agents/mcp_config.json`, ensure the paths to `server.js` and `ripwire.exe` point to valid compiled binaries on the host.
+3. When opening that project in Antigravity, the agent will discover `.agents/` automatically.
 
 ---
 
-## 5. Configuração do Ripwire em Linux ou macOS
+## 5. Ripwire Setup on Linux or macOS
 
-O repositório já inclui o binário nativo para **Windows x64** em `bin/ripwire-0.6.5-windows-x64/ripwire.exe`.
+This repository includes a pre-packaged native binary for **Windows x64** in `bin/ripwire-0.6.5-windows-x64/ripwire.exe`.
 
-Se você estiver em **Linux** ou **macOS**:
-1. Baixe a release nativa correspondente do Ripwire em [GitHub: redhat-et/ripwire/releases](https://github.com/redhat-et/ripwire/releases).
-2. Extraia o binário executável `ripwire` em uma pasta de sua preferência (ex: `/usr/local/bin/ripwire` ou dentro de `bin/`).
-3. Dê permissão de execução: `chmod +x ripwire`.
-4. Ajuste a variável de ambiente `"RIPWIRE_PATH"` no `mcp_config.json` para apontar para o binário extraído.
+If you are running on **Linux** or **macOS**:
+1. Download the corresponding native release from [GitHub: redhat-et/ripwire/releases](https://github.com/redhat-et/ripwire/releases).
+2. Extract the `ripwire` executable to a directory of your choice (e.g. `/usr/local/bin/ripwire` or inside `bin/`).
+3. Make it executable: `chmod +x ripwire`.
+4. Update the `"RIPWIRE_PATH"` environment variable in your `mcp_config.json` to point to that binary.
 
 ---
 
-## 6. Verificação e Teste
+## 6. Verification & Testing
 
-### 6.1. Teste no Antigravity
-1. Abra ou reinicie sua sessão no Google Antigravity.
-2. No chat com o agente, digite `/codemode` ou pergunte:
-   > *"Quais ferramentas você tem disponíveis para codemode?"*
-3. O agente deverá identificar as ferramentas `codemode_run`, `codemode_apply` e `codemode_discard`, além das capacidades de navegação e grafo com Ripwire.
+### 6.1. Verification in Google Antigravity
+1. Open or restart your Google Antigravity session.
+2. In the chat, type `/codemode` or prompt the agent:
+   > *"What tools do you have available for codemode?"*
+3. The agent should confirm the presence of `codemode_run`, `codemode_apply`, and `codemode_discard`, as well as Ripwire code intelligence.
 
-### 6.2. Teste Standalone via Terminal (Opcional)
-Você pode testar a inicialização direta do servidor MCP via stdio:
+### 6.2. Standalone MCP Server Check (Optional)
+You can directly test the MCP stdio protocol from your terminal:
 ```bash
 node .agents/plugins/codemode/server/dist/mcp/server.js
 ```
-O servidor aguardará mensagens do protocolo MCP (pressione `Ctrl+C` para encerrar).
+The process will stay active awaiting JSON-RPC messages over stdio (press `Ctrl+C` to stop).
 
-### 6.3. Execução do Benchmark Local
-Para verificar o ganho de desempenho e economia de contexto na sua própria máquina:
+### 6.3. Running the Benchmark Suite
+To verify real-world token savings and local performance on your hardware:
 ```bash
 npm run benchmark
 ```
-O benchmark executará testes comparativos entre o modo tradicional e o Codemode, exibindo uma tabela com tokens economizados e latência.
+This runs the 5-scenario statistical benchmark suite and displays a formatted metrics table.
 
 ---
 
-## 7. Solução de Problemas (Troubleshooting)
+## 7. Troubleshooting & FAQ
 
 - **`Cannot find module .../dist/mcp/server.js`:**
-  - Certifique-se de ter executado `npm run build` dentro do repositório para compilar o TypeScript.
-- **Erro de caminhos no Windows:**
-  - Não utilize barras invertidas simples `\` no `mcp_config.json`. Utilize `/` ou `\\`.
-- **`Ripwire not found` ou erro ao invocar `ripwire.map`:**
-  - Verifique se o caminho especificado na variável `"RIPWIRE_PATH"` existe e é acessível pelo usuário atual.
-- **Permissão de execução no PowerShell:**
-  - Se scripts `.ps1` forem bloqueados, execute: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`.
+  - Run `npm run build` from the repository root to compile TypeScript sources.
+- **Path Resolution Errors on Windows:**
+  - Avoid unescaped single backslashes `\` in `mcp_config.json`. Use forward slashes `/` or double backslashes `\\`.
+- **`Ripwire not found` or error when calling `ripwire.map`:**
+  - Verify that the path set in `"RIPWIRE_PATH"` points to an existing, executable binary file.
+- **PowerShell Script Execution Policy:**
+  - If PowerShell blocks running setup scripts, run: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`.
