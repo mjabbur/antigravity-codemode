@@ -113,14 +113,26 @@ node c:\Dev\Joker\.agents\plugins\codemode\server\dist\mcp\server.js
 
 ---
 
-## 6. Estado do Git & Próximo Passo de Integração
+## 6. Estado do Git & GitHub Remote
 
-O repositório local está com o histórico limpo e comitado na branch `main`:
-- `7e23bb4` - Implementação completa das Fases 1 a 5.
-- `8f3d229` - Adição de guia de uso, benchmark e documentações.
+O repositório está 100% versionado e sincronizado com o GitHub remoto:
+- **Repositório:** `https://github.com/mjabbur/antigravity-codemode`
+- **Branch:** `main` (em sincronia exata com `origin/main`)
+- **Commits:**
+  - `7e23bb4`: Implementação completa das Fases 1 a 5 (QuickJS WASM, Segurança Windows, Ripwire, MCP).
+  - `8f3d229`: Documentação de uso, suíte de benchmarks e relatórios.
+  - `cc2ab5b`: Documentos de governança, memória de sessão e handoff.
 
-**Pendente apenas:** Adicionar o remote URL fornecido pelo usuário:
-```bash
-git remote add origin <URL_DO_REPOSITORIO>
-git push -u origin main
-```
+---
+
+## 7. Instalação e Ativação Global no Antigravity
+
+Para que o **Codemode** esteja disponível de forma transparente em **qualquer projeto ou workspace** aberto no Google Antigravity nesta máquina (sem necessidade de reconfiguração manual por projeto), os seguintes componentes globais foram registrados em `~/.gemini/config/`:
+
+1. **Configuração Global MCP (`C:\Users\mjabb\.gemini\config\mcp_config.json`):**
+   - Registra o servidor MCP `codemode` apontando para o binário compilado `dist/mcp/server.js` e com o binário nativo do `ripwire.exe` configurado.
+2. **Skill Global (`C:\Users\mjabb\.gemini\config\skills\codemode\SKILL.md`):**
+   - Torna o comando `/codemode` e a capacidade de invocação do Codemode visíveis para o agente em qualquer diretório ou workspace aberto.
+3. **Pacote de Plugin Global (`C:\Users\mjabb\.gemini\config\plugins\codemode/`):**
+   - Contém `plugin.json`, `mcp_config.json` e skills empacotadas para permitir carregamento unificado pelo motor de extensões do Antigravity.
+

@@ -69,3 +69,13 @@ Durante o desenvolvimento deste projeto, foram identificadas e solucionadas dive
 - [`docs/GUIA_DE_USO_CODEMODE.md`](file:///c:/Dev/Joker/docs/GUIA_DE_USO_CODEMODE.md): Manual completo de uso e receitas para agentes/desenvolvedores.
 - [`docs/BENCHMARK_CODEMODE.md`](file:///c:/Dev/Joker/docs/BENCHMARK_CODEMODE.md): Resultados empíricos comprovando ~98% de economia de tokens e ganho de ~9x em latência real.
 - [`HANDOFF.md`](file:///c:/Dev/Joker/HANDOFF.md): Documento de passagem de bastão operacional.
+
+---
+
+## 4. Ativação Global no Antigravity
+
+Para eliminar qualquer necessidade de ativação manual por parte do usuário em novos projetos, o Codemode foi registrado no diretório global do Antigravity (`~/.gemini/config/`):
+- `mcp_config.json`: Registra o servidor MCP `codemode` para inicialização automática em qualquer sessão.
+- `skills/codemode/SKILL.md`: Skill global disponível em qualquer workspace da máquina.
+- `plugins/codemode/`: Pacote de plugin global com `plugin.json` e recursos correspondentes.
+
