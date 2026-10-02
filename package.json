@@ -1,0 +1,24 @@
+{
+  "name": "antigravity-codemode",
+  "version": "1.0.0",
+  "description": "QuickJS WASM Sandbox, Ripwire Code Graph & Atomic Filesystem Staging for Google Antigravity",
+  "type": "module",
+  "scripts": {
+    "build": "npm --prefix .agents/plugins/codemode/server run build",
+    "test": "npm --prefix .agents/plugins/codemode/server test",
+    "install:server": "npm --prefix .agents/plugins/codemode/server install",
+    "benchmark": "npx --prefix .agents/plugins/codemode/server tsx benchmarks/run-benchmark.ts"
+  },
+  "keywords": [
+    "antigravity",
+    "codemode",
+    "mcp",
+    "quickjs",
+    "wasm",
+    "ripwire",
+    "ai-agent",
+    "code-intelligence"
+  ],
+  "author": "mjabbur",
+  "license": "MIT"
+}
