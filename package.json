@@ -7,7 +7,7 @@
     "build": "npm --prefix .agents/plugins/codemode/server run build",
     "test": "npm --prefix .agents/plugins/codemode/server test",
     "install:server": "npm --prefix .agents/plugins/codemode/server install",
-    "benchmark": "npx --prefix .agents/plugins/codemode/server tsx benchmarks/run-benchmark.ts"
+    "benchmark": "npm --prefix .agents/plugins/codemode/server run benchmark"
   },
   "keywords": [
     "antigravity",

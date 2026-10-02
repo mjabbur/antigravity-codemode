@@ -6,7 +6,8 @@
   "main": "./dist/sandbox/index.js",
   "scripts": {
     "build": "tsc",
-    "test": "vitest run"
+    "test": "vitest run",
+    "benchmark": "npx tsx benchmarks/run-benchmark.ts"
   },
   "dependencies": {
     "quickjs-wasi": "3.6.2",
