@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "codemode": {
+      "command": "node",
+      "args": [
+        "c:/Dev/Joker/.agents/plugins/codemode/server/dist/mcp/server.js"
+      ],
+      "env": {
+        "RIPWIRE_PATH": "c:/Dev/Joker/bin/ripwire-0.6.5-windows-x64/ripwire.exe"
+      }
+    }
+  }
+}

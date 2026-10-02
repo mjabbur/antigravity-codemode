@@ -1,0 +1,21 @@
+{
+  "name": "antigravity-codemode-server",
+  "version": "1.0.0",
+  "description": "QuickJS WASM Sandbox & MCP Server for Antigravity Codemode Plugin",
+  "type": "module",
+  "main": "./dist/sandbox/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "quickjs-wasi": "3.6.2",
+    "@modelcontextprotocol/sdk": "^1.6.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

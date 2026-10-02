@@ -1,0 +1,14 @@
+# Dependências
+node_modules/
+dist/
+*.log
+
+# Caches e temporários
+.tmp/
+*.tmp
+*.bak.*
+.DS_Store
+Thumbs.db
+
+# QuickJS WASM cache
+*.wasm.cache
