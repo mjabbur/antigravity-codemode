@@ -1,6 +1,6 @@
-# Antigravity Codemode ⚡
+# Antigravity Codemode
 
-[![Vitest Tests](https://img.shields.io/badge/tests-48%20passing%20(100%25)-success)](file:///c:/Dev/Joker/.agents/plugins/codemode/server/test)
+[![Vitest Tests](https://img.shields.io/badge/tests-56%20passing%20(100%25)-success)](file:///c:/Dev/Joker/.agents/plugins/codemode/server/test)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7%20NodeNext-blue)](file:///c:/Dev/Joker/package.json)
 [![QuickJS WASM](https://img.shields.io/badge/Engine-QuickJS%20WASI-orange)](https://github.com/justjake/quickjs-emscripten)
 [![Ripwire Inside](https://img.shields.io/badge/Code%20Intelligence-Ripwire%20v0.6.5-purple)](https://github.com/redhat-et/ripwire)
@@ -11,21 +11,21 @@
 
 ---
 
-## 🎯 Why Codemode?
+## Why Codemode?
 
 Traditional AI agents interact with codebases through iterative, sequential tool calls across the cloud (*tool-calling loop*):
-`grep` ➡️ wait for LLM ➡️ `read_file` ➡️ wait for LLM ➡️ `replace_file` ➡️ ...
+`grep` -> wait for LLM -> `read_file` -> wait for LLM -> `replace_file` -> ...
 
 This pattern introduces three critical bottlenecks:
 1. **Context Window Exhaustion:** Thousands of lines of intermediate source code clutter the LLM context.
-2. **High Latency:** Every cloud round-trip costs 2 to 5 seconds (10 round-trips = ~25–30 seconds of idle waiting).
+2. **High Latency:** Every cloud round-trip costs 2 to 5 seconds (10 round-trips = ~25-30 seconds of idle waiting).
 3. **Lack of Transactionality:** If an agent fails on the 4th file of a 5-file refactor, the repository is left in a broken, half-modified state.
 
 **Codemode flips this paradigm:** Instead of streaming entire files to the cloud, the LLM emits a compact, asynchronous JavaScript script that runs **locally inside a secure WebAssembly sandbox on the developer's machine**, filtering, navigating, and transforming code at memory speed.
 
 ---
 
-## 🔬 Benchmark Methodology & Scientific Results
+## Benchmark Methodology & Scientific Results
 
 To rigorously evaluate Codemode against traditional sequential tool calling, we established an automated, statistically controlled benchmark suite.
 
@@ -48,21 +48,22 @@ To rigorously evaluate Codemode against traditional sequential tool calling, we 
 
 > **Memory & Lifecycle Stress Test (Scenario 5):** 10 consecutive cycles of initializing, executing memory-intensive scripts, and tearing down QuickJS WASM sandboxes completed in 1,073 ms (~107 ms/cycle) with **zero memory leaks** (active RSS variation of -29.04 MB due to prompt V8 and QuickJS garbage collection).
 >
-> 📖 For the in-depth technical analysis of each scenario, see the [Full Scientific Benchmark Report (docs/BENCHMARK_CODEMODE.md)](docs/BENCHMARK_CODEMODE.md).
+> For the in-depth technical analysis of each scenario, see the [Full Scientific Benchmark Report (docs/BENCHMARK_CODEMODE.md)](docs/BENCHMARK_CODEMODE.md).
 >
-> 🔄 Reproduce these benchmarks on your machine: `npm run benchmark`.
+> Reproduce these benchmarks on your machine: `npm run benchmark`.
 
 ---
 
-## ⚡ Core Architecture & Features
+## Core Architecture & Features
 
 ### 1. Isolated WebAssembly Sandbox (QuickJS WASI)
 - Sterile, isolated environment: no unauthorized network access (`fetch`), arbitrary process execution (`child_process`), or unconstrained `eval`.
 - Hard execution deadlines (30s execution watchdog) and memory ceiling (128 MB).
 - Fast bidirectional binary IPC protocol between Node.js host and WASM guest.
 
-### 2. Semantic Code Intelligence with Ripwire
+### 2. Semantic Code Intelligence with Ripwire (Optional & Lazy-Loaded)
 - Code graph built and queried in sub-seconds using **Personalized PageRank**.
+- **Lazy Loading & Dynamic Discovery:** The MCP server boots cleanly without requiring Ripwire to be pre-installed. The binary is resolved on-demand when a `ripwire.*` tool is invoked, checking `RIPWIRE_PATH` first and then falling back to system `PATH` (e.g. `ripwire` or `ripwire.exe`).
 - Exposed APIs inside scripts:
   - `tools["ripwire.map"]`: Architectural overview and most influential repository symbols.
   - `tools["ripwire.callers"]`: Direct 1-hop callers of functions or interfaces.
@@ -71,21 +72,25 @@ To rigorously evaluate Codemode against traditional sequential tool calling, we 
   - `tools["ripwire.for"]`: Task Lens semantic context assembly for natural language tasks.
   - `tools["ripwire.around"]`: Ego-graph surrounding a target symbol up to a specified depth.
 
-### 3. Staging-First Filesystem with Atomic Rollback
+### 3. Staging-First Filesystem with Atomic Rollback & POSIX Mode Preservation
 - **Zero Real Disk Mutation during `codemode_run`:** All changes are buffered in-memory.
 - Automatic **unified diff** generation for human review.
 - Optimistic concurrency checking with disk state prior to commit.
 - Transactional rollback: if I/O fails on any file in a batch, all previous modifications are atomically reverted.
+- **POSIX Mode Preservation:** Pre-existing file permissions (`st_mode`, including executable bit `+x` / `0755` and restricted modes `0600`) are preserved upon `codemode_apply`.
+- **Robust Path Traversal:** Gracefully handles intermediate `ENOTDIR` collisions alongside `ENOENT`.
 
-### 4. Windows NTFS Hardened Security Layer
-- Strict path containment blocking UNC paths (`\\server\share`) and Win32 device namespaces (`\\?\`).
-- Rejection of Alternate Data Streams (ADS) and reserved MS-DOS device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1..9`, `LPT1..9`).
-- 64-bit BigInt file identity verification (`dev` + `ino`) preventing TOCTOU symlink races on NTFS.
-- Catastrophic backtracking (ReDoS) immunity: regex evaluation isolated in **dedicated Worker Threads with a 600ms watchdog**.
+### 4. Multiplatform Hardened Security Layer
+- **Universal Containment:** Strict workspace boundary containment, blocking UNC paths (`\\server\share`), Win32 device namespaces (`\\?\`), sensitive metadata folders (`.git`, `.ssh`, `.aws`), and secret credentials (`.env*`, `*.pem`, `*.key`).
+- **Platform-Aware Path Validation:**
+  - On **Windows**: Blocks MS-DOS reserved device names (`CON`, `PRN`, `AUX`, `NUL`, `COM1..9`, `LPT1..9`), Alternate Data Streams (ADS `:`), trailing dots/spaces, and 8.3 short names (`~1`).
+  - On **Linux / POSIX**: Fully supports case-sensitive filesystems (allowing distinct files like `Foo.txt` and `foo.txt` in staging), permits valid POSIX filenames containing colons or dots, and retains POSIX file permissions.
+- **Catastrophic Backtracking (ReDoS) Immunity:** Regex evaluation isolated in **dedicated Worker Threads with a 600ms watchdog**.
+- **BigInt Identity Verification:** 64-bit BigInt file identity verification (`dev` + `ino`) preventing TOCTOU symlink races.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 To install and build Codemode on your machine:
 
@@ -102,12 +107,12 @@ npm run build
 npm test
 ```
 
-📖 **For complete step-by-step setup (Global or Workspace-level in Google Antigravity), see:**  
-👉 **[Detailed Installation Guide (INSTALL.md)](INSTALL.md)**
+**For complete step-by-step setup (Global or Workspace-level in Google Antigravity), see:**  
+**[Detailed Installation Guide (INSTALL.md)](INSTALL.md)**
 
 ---
 
-## 💡 Code Examples
+## Code Examples
 
 Once installed, use the `/codemode` slash command in Google Antigravity or let the agent autonomously invoke MCP tools when cost-effective.
 
@@ -149,7 +154,7 @@ After inspecting the staged diff returned by `codemode_run`, approve changes by 
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 antigravity-codemode/
@@ -161,10 +166,10 @@ antigravity-codemode/
 │   │       ├── specs/                    # Formal SDD specifications (Phases 1 to 4)
 │   │       ├── src/
 │   │       │   ├── sandbox/              # QuickJS WASM, Host, Worker & IPC protocol
-│   │       │   ├── security/             # PathPolicy with Windows NTFS containment
+│   │       │   ├── security/             # PathPolicy with multiplatform & NTFS containment
 │   │       │   ├── tools/                # fs-read, fs-write (staging), ripwire, regex
 │   │       │   └── mcp/                  # Stdio MCP server (codemode_run, apply, discard)
-│   │       ├── test/                     # 48 Vitest unit & invariant tests
+│   │       ├── test/                     # 56 Vitest unit & invariant tests
 │   │       └── benchmarks/               # Automated statistical benchmark suite
 │   ├── rules/
 │   │   └── codemode-policy.md            # Agent cost-prioritization guidelines
@@ -185,7 +190,7 @@ antigravity-codemode/
 
 ---
 
-## 🛠️ Development Commands
+## Development Commands
 
 From the root directory:
 
@@ -196,7 +201,7 @@ From the root directory:
 
 ---
 
-## 📚 Additional Documentation
+## Additional Documentation
 
 - [Installation Guide (INSTALL.md)](INSTALL.md)
 - [Usage Guide & Code Recipes (docs/USAGE_GUIDE.md)](docs/USAGE_GUIDE.md)
@@ -206,6 +211,6 @@ From the root directory:
 
 ---
 
-## 📄 License
+## License
 
 Distributed under the [MIT License](LICENSE).

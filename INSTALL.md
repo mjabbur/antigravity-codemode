@@ -11,7 +11,8 @@ Ensure your development environment meets the following requirements:
 - **npm**: version `>= 9.0.0`.
 - **Git**.
 - **Google Antigravity**: IDE, Desktop 2.0 application, or CLI (`agy`).
-- **Operating System**: Windows 10/11 x64, Linux x64, or macOS (the native Windows x64 Ripwire binary is bundled in `bin/`).
+- **Operating System**: Windows 10/11 x64, Linux x64, or macOS.
+- **Ripwire (Optional)**: Provides semantic code intelligence (`ripwire.map`, `ripwire.callers`, `ripwire.impact`, etc.). A native Windows x64 binary is bundled in `bin/ripwire-0.6.5-windows-x64/ripwire.exe`. On Linux and macOS, Ripwire can be installed into your system `PATH` or configured via `RIPWIRE_PATH`. Core sandbox execution (`codemode_run`), file staging, diff inspection, and atomic rollbacks operate completely independently without Ripwire.
 
 ---
 
@@ -30,11 +31,11 @@ npm run install:server
 # 3. Compile TypeScript to JavaScript (dist/)
 npm run build
 
-# 4. Run the 48-test deterministic test suite to verify your setup
+# 4. Run the 56-test multiplatform test suite to verify your setup
 npm test
 ```
 
-> **Verification:** All 48 Vitest unit and invariant tests (QuickJS Sandbox, Windows Security, Ripwire, and MCP Server) should pass with 100% success.
+> **Verification:** All 56 Vitest unit and invariant tests (QuickJS Sandbox, Multiplatform Security & Staging, Ripwire, and MCP Server) should pass with 100% success. (Note: On Linux environments without a Ripwire ELF binary configured, Ripwire integration tests are automatically skipped while all sandbox and security invariant tests pass).
 
 ---
 
@@ -77,10 +78,10 @@ $mcpJson = @"
 Set-Content -Path "$HOME\.gemini\config\mcp_config.json" -Value $mcpJson -Encoding UTF8
 Copy-Item "$HOME\.gemini\config\mcp_config.json" "$HOME\.gemini\config\plugins\codemode\mcp_config.json" -Force
 
-Write-Host "✅ Codemode successfully installed and registered globally!" -ForegroundColor Green
+Write-Host "Codemode successfully installed and registered globally!" -ForegroundColor Green
 ```
 
-### Manual MCP Server Configuration:
+### Manual MCP Server Configuration (Windows, Linux, macOS):
 
 If you already have existing MCP servers configured in `~/.gemini/config/mcp_config.json`, simply add the `"codemode"` entry to your `"mcpServers"` object:
 
@@ -90,10 +91,10 @@ If you already have existing MCP servers configured in `~/.gemini/config/mcp_con
     "codemode": {
       "command": "node",
       "args": [
-        "C:/path/to/antigravity-codemode/.agents/plugins/codemode/server/dist/mcp/server.js"
+        "/path/to/antigravity-codemode/.agents/plugins/codemode/server/dist/mcp/server.js"
       ],
       "env": {
-        "RIPWIRE_PATH": "C:/path/to/antigravity-codemode/bin/ripwire-0.6.5-windows-x64/ripwire.exe"
+        "RIPWIRE_PATH": "/path/to/antigravity-codemode/bin/ripwire-0.6.5-windows-x64/ripwire.exe"
       }
     }
   }
@@ -101,7 +102,8 @@ If you already have existing MCP servers configured in `~/.gemini/config/mcp_con
 ```
 
 > [!TIP]
-> In JSON files on Windows, always use forward slashes (`/`) or double backslashes (`\\`) in path values.
+> - On Linux or macOS, `"RIPWIRE_PATH"` is optional if `ripwire` is placed in your system `PATH`.
+> - In JSON files on Windows, always use forward slashes (`/`) or double backslashes (`\\`) in path values.
 
 ---
 
@@ -113,20 +115,23 @@ If you prefer to restrict Codemode to a specific project (e.g., committing `.age
    ```bash
    cp -r .agents/ /path/to/your/project/
    ```
-2. In `/path/to/your/project/.agents/mcp_config.json`, ensure the paths to `server.js` and `ripwire.exe` point to valid compiled binaries on the host.
+2. In `/path/to/your/project/.agents/mcp_config.json`, ensure the paths to `server.js` point to valid compiled files on the host.
 3. When opening that project in Antigravity, the agent will discover `.agents/` automatically.
 
 ---
 
 ## 5. Ripwire Setup on Linux or macOS
 
-This repository includes a pre-packaged native binary for **Windows x64** in `bin/ripwire-0.6.5-windows-x64/ripwire.exe`.
+Ripwire is **optional and lazy-loaded**. The Codemode MCP server starts cleanly and performs all sandbox script execution and staging refactoring even if Ripwire is absent.
 
-If you are running on **Linux** or **macOS**:
+If you want semantic code intelligence tools (`ripwire.*`) on Linux or macOS:
 1. Download the corresponding native release from [GitHub: redhat-et/ripwire/releases](https://github.com/redhat-et/ripwire/releases).
-2. Extract the `ripwire` executable to a directory of your choice (e.g. `/usr/local/bin/ripwire` or inside `bin/`).
-3. Make it executable: `chmod +x ripwire`.
-4. Update the `"RIPWIRE_PATH"` environment variable in your `mcp_config.json` to point to that binary.
+2. Extract the `ripwire` executable to a directory in your system `PATH` (e.g. `/usr/local/bin/ripwire`) or a directory of your choice.
+3. Make it executable:
+   ```bash
+   chmod +x /usr/local/bin/ripwire
+   ```
+4. If the binary is not in your system `PATH`, configure the `"RIPWIRE_PATH"` environment variable in your `mcp_config.json` pointing to the executable.
 
 ---
 
@@ -136,7 +141,7 @@ If you are running on **Linux** or **macOS**:
 1. Open or restart your Google Antigravity session.
 2. In the chat, type `/codemode` or prompt the agent:
    > *"What tools do you have available for codemode?"*
-3. The agent should confirm the presence of `codemode_run`, `codemode_apply`, and `codemode_discard`, as well as Ripwire code intelligence.
+3. The agent should confirm the presence of `codemode_run`, `codemode_apply`, and `codemode_discard`, as well as Ripwire code intelligence tools if available.
 
 ### 6.2. Standalone MCP Server Check (Optional)
 You can directly test the MCP stdio protocol from your terminal:
@@ -160,7 +165,7 @@ This runs the 5-scenario statistical benchmark suite and displays a formatted me
   - Run `npm run build` from the repository root to compile TypeScript sources.
 - **Path Resolution Errors on Windows:**
   - Avoid unescaped single backslashes `\` in `mcp_config.json`. Use forward slashes `/` or double backslashes `\\`.
-- **`Ripwire not found` or error when calling `ripwire.map`:**
-  - Verify that the path set in `"RIPWIRE_PATH"` points to an existing, executable binary file.
+- **`Ripwire binary not found` message:**
+  - The server starts normally without Ripwire. If a `ripwire.*` tool returns this message, ensure `ripwire` is installed in your system `PATH` or define `RIPWIRE_PATH` in `mcp_config.json`. All sandbox and filesystem tools continue operating normally.
 - **PowerShell Script Execution Policy:**
   - If PowerShell blocks running setup scripts, run: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`.
