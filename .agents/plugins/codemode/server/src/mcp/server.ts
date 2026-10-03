@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { CodemodeSandbox } from "../sandbox/index.ts";
 import { PathPolicy } from "../security/path-policy.ts";
 import { createFsReadTools } from "../tools/fs-read.ts";
@@ -194,10 +195,32 @@ export async function runServer(): Promise<void> {
   await server.connect(transport);
 }
 
+export function isMainModule(metaUrl: string, argv1?: string): boolean {
+  if (!argv1) {
+    return false;
+  }
+  try {
+    const argvUrl = pathToFileURL(argv1).href;
+    if (argvUrl === metaUrl) {
+      return true;
+    }
+    // No Windows, normaliza caminhos para tratar variações de maiúsculas/minúsculas na letra da unidade
+    if (process.platform === "win32" || /^[a-zA-Z]:[\\/]/.test(argv1)) {
+      const p1 = path.resolve(fileURLToPath(metaUrl));
+      const p2 = path.resolve(argv1);
+      return p1.toLowerCase() === p2.toLowerCase();
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 // Inicia no stdio se for o ponto de entrada principal
-if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}`) {
+if (isMainModule(import.meta.url, process.argv[1])) {
   runServer().catch((error) => {
     console.error("Falha fatal no Servidor MCP Codemode:", error);
     process.exit(1);
   });
 }
+
