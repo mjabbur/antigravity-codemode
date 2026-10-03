@@ -41,8 +41,16 @@ function generateSimpleUnifiedDiff(relPath: string, original: string | null, upd
   return diff;
 }
 
-export function createFsWriteTools(policy: PathPolicy): CodemodeTool[] {
-  // B6: Chave canônica em minúsculas para evitar duplicatas por caminhos relativos ou maiúsculas
+export interface FsWriteToolsOptions {
+  caseInsensitive?: boolean;
+}
+
+export function createFsWriteTools(
+  policy: PathPolicy,
+  options?: FsWriteToolsOptions
+): CodemodeTool[] {
+  const isCaseInsensitive = options?.caseInsensitive ?? policy.caseInsensitive ?? (process.platform === "win32");
+  // B6: Chave canônica respeitando case-insensitivity da plataforma ou opção
   const stagedMap = new Map<string, StagedEntry>();
 
   return [
@@ -63,7 +71,7 @@ export function createFsWriteTools(policy: PathPolicy): CodemodeTool[] {
         }
 
         const resolved = policy.resolvePath(filePath, "write");
-        const canonicalKey = resolved.toLowerCase();
+        const canonicalKey = isCaseInsensitive ? resolved.toLowerCase() : resolved;
         const relPath = path.relative(policy.workspaceRoot, resolved).replace(/\\/g, "/");
 
         let originalContent: string | null = null;
@@ -75,7 +83,7 @@ export function createFsWriteTools(policy: PathPolicy): CodemodeTool[] {
             originalContent = await fs.readFile(resolved, "utf-8");
           } catch (err: unknown) {
             const code = (err as { code?: string })?.code;
-            if (code === "ENOENT") {
+            if (code === "ENOENT" || code === "ENOTDIR") {
               originalContent = null;
             } else {
               throw err;
@@ -114,7 +122,7 @@ export function createFsWriteTools(policy: PathPolicy): CodemodeTool[] {
         }
 
         const resolved = policy.resolvePath(filePath, "write");
-        const canonicalKey = resolved.toLowerCase();
+        const canonicalKey = isCaseInsensitive ? resolved.toLowerCase() : resolved;
         const relPath = path.relative(policy.workspaceRoot, resolved).replace(/\\/g, "/");
 
         let currentContent: string;
@@ -130,7 +138,7 @@ export function createFsWriteTools(policy: PathPolicy): CodemodeTool[] {
             currentContent = originalContent;
           } catch (err: unknown) {
             const code = (err as { code?: string })?.code;
-            if (code === "ENOENT") {
+            if (code === "ENOENT" || code === "ENOTDIR") {
               throw new Error(`Arquivo "${filePath}" não encontrado para edição.`);
             }
             throw err;
@@ -180,6 +188,7 @@ export function createFsWriteTools(policy: PathPolicy): CodemodeTool[] {
         if (stagedMap.size === 0) return [];
 
         const backups = new Map<string, string | null>(); // path -> backup file path
+        const originalModes = new Map<string, number>(); // path -> mode
         const writtenPaths: string[] = [];
         const entries = Array.from(stagedMap.values());
 
@@ -192,10 +201,12 @@ export function createFsWriteTools(policy: PathPolicy): CodemodeTool[] {
             // Verifica se o arquivo no disco sofreu alteração externa desde o stage
             let diskContent: string | null = null;
             try {
+              const stat = await fs.stat(entry.canonicalPath);
+              originalModes.set(entry.canonicalPath, stat.mode);
               diskContent = await fs.readFile(entry.canonicalPath, "utf-8");
             } catch (err: unknown) {
               const code = (err as { code?: string })?.code;
-              if (code !== "ENOENT") throw err;
+              if (code !== "ENOENT" && code !== "ENOTDIR") throw err;
             }
 
             if (diskContent !== entry.originalContent) {
@@ -219,6 +230,14 @@ export function createFsWriteTools(policy: PathPolicy): CodemodeTool[] {
           for (const entry of entries) {
             const tempWritePath = `${entry.canonicalPath}.tmp.${Date.now()}.${Math.random()}`;
             await fs.writeFile(tempWritePath, entry.newContent, "utf-8");
+
+            // D2: Preserva o mode original (permissões POSIX) no arquivo temporário antes do rename
+            const origMode = originalModes.get(entry.canonicalPath);
+            if (origMode !== undefined) {
+              try {
+                await fs.chmod(tempWritePath, origMode);
+              } catch {}
+            }
 
             // No Windows, rename sobre arquivo existente pode requerer remoção prévia em alguns FS
             try {
