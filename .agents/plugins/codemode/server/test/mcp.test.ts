@@ -138,32 +138,47 @@ describe("MCP Server Protocol & Codemode Tool Entrypoints (Spec 04)", () => {
     expect(response.content[0].text).toContain("rejected:");
   });
 
-  it("M07: isMainModule detecta ponto de entrada no Windows (unidade maiúscula/minúscula, barras, espaços)", () => {
-    // 1. Caminho exato com unidade maiúscula e barras invertidas
-    const metaUrlUpper = "file:///C:/Dev/Joker/.agents/plugins/codemode/server/dist/mcp/server.js";
-    expect(isMainModule(metaUrlUpper, "C:\\Dev\\Joker\\.agents\\plugins\\codemode\\server\\dist\\mcp\\server.js")).toBe(true);
+  it("M07: isMainModule detecta ponto de entrada principal conforme a plataforma", () => {
+    if (process.platform === "win32") {
+      // 1. Caminho exato com unidade maiúscula e barras invertidas
+      const metaUrlUpper = "file:///C:/Dev/Joker/.agents/plugins/codemode/server/dist/mcp/server.js";
+      expect(isMainModule(metaUrlUpper, "C:\\Dev\\Joker\\.agents\\plugins\\codemode\\server\\dist\\mcp\\server.js")).toBe(true);
 
-    // 2. Variação com unidade minúscula no argv
-    expect(isMainModule(metaUrlUpper, "c:\\Dev\\Joker\\.agents\\plugins\\codemode\\server\\dist\\mcp\\server.js")).toBe(true);
+      // 2. Variação com unidade minúscula no argv
+      expect(isMainModule(metaUrlUpper, "c:\\Dev\\Joker\\.agents\\plugins\\codemode\\server\\dist\\mcp\\server.js")).toBe(true);
 
-    // 3. Variação com unidade maiúscula no argv e minúscula no import.meta.url
-    const metaUrlLower = "file:///c:/Dev/Joker/.agents/plugins/codemode/server/dist/mcp/server.js";
-    expect(isMainModule(metaUrlLower, "C:\\Dev\\Joker\\.agents\\plugins\\codemode\\server\\dist\\mcp\\server.js")).toBe(true);
+      // 3. Variação com unidade maiúscula no argv e minúscula no import.meta.url
+      const metaUrlLower = "file:///c:/Dev/Joker/.agents/plugins/codemode/server/dist/mcp/server.js";
+      expect(isMainModule(metaUrlLower, "C:\\Dev\\Joker\\.agents\\plugins\\codemode\\server\\dist\\mcp\\server.js")).toBe(true);
 
-    // 4. Variação com barras normais (forward slashes)
-    expect(isMainModule(metaUrlUpper, "c:/Dev/Joker/.agents/plugins/codemode/server/dist/mcp/server.js")).toBe(true);
+      // 4. Variação com barras normais (forward slashes)
+      expect(isMainModule(metaUrlUpper, "c:/Dev/Joker/.agents/plugins/codemode/server/dist/mcp/server.js")).toBe(true);
 
-    // 5. Caminho contendo espaços
-    const metaUrlSpaces = "file:///C:/Program%20Files/Meu%20Agente/server.js";
-    expect(isMainModule(metaUrlSpaces, "C:\\Program Files\\Meu Agente\\server.js")).toBe(true);
-    expect(isMainModule(metaUrlSpaces, "c:\\Program Files\\Meu Agente\\server.js")).toBe(true);
+      // 5. Caminho contendo espaços
+      const metaUrlSpaces = "file:///C:/Program%20Files/Meu%20Agente/server.js";
+      expect(isMainModule(metaUrlSpaces, "C:\\Program Files\\Meu Agente\\server.js")).toBe(true);
+      expect(isMainModule(metaUrlSpaces, "c:\\Program Files\\Meu Agente\\server.js")).toBe(true);
+    } else {
+      // Cenários POSIX (Linux / macOS)
+      const metaUrl = "file:///home/user/project/dist/mcp/server.js";
+      expect(isMainModule(metaUrl, "/home/user/project/dist/mcp/server.js")).toBe(true);
+
+      const metaUrlSpaces = "file:///home/user/meu%20projeto/dist/mcp/server.js";
+      expect(isMainModule(metaUrlSpaces, "/home/user/meu projeto/dist/mcp/server.js")).toBe(true);
+    }
 
     // 6. Tratamento de argv[1] indefinido ou vazio
-    expect(isMainModule(metaUrlUpper, undefined)).toBe(false);
-    expect(isMainModule(metaUrlUpper, "")).toBe(false);
+    const dummyUrl = process.platform === "win32"
+      ? "file:///C:/Dev/Joker/.agents/plugins/codemode/server/dist/mcp/server.js"
+      : "file:///home/user/project/dist/mcp/server.js";
+    expect(isMainModule(dummyUrl, undefined)).toBe(false);
+    expect(isMainModule(dummyUrl, "")).toBe(false);
 
     // 7. Script diferente (não é o entrypoint)
-    expect(isMainModule(metaUrlUpper, "C:\\Dev\\Joker\\other-script.js")).toBe(false);
+    const otherScript = process.platform === "win32"
+      ? "C:\\Dev\\Joker\\other-script.js"
+      : "/home/user/other-script.js";
+    expect(isMainModule(dummyUrl, otherScript)).toBe(false);
   });
 });
 

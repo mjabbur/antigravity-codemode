@@ -377,4 +377,102 @@ describe("Segurança de Caminhos no Windows e Filesystem com Staging (Spec 02 Re
       statSpy.mockRestore();
     }
   });
+
+  it("S23: PathPolicy com caseInsensitive: false bloqueia pasta irmã fora do workspace que difere por caixa (A1)", async () => {
+    if (process.platform === "win32") {
+      const ws = path.join(tempDir, "Project");
+      await fs.mkdir(ws);
+      const csPolicy = new PathPolicy(ws, { caseInsensitive: false, isWindows: false });
+      const outside = path.join(tempDir, "project", "secret.txt");
+      expect(() => csPolicy.resolvePath(outside, "read")).toThrow(SecurityError);
+    } else {
+      const parent = await fs.mkdtemp(path.join(os.tmpdir(), "case-test-"));
+      const ws = path.join(parent, "Project");
+      const outside = path.join(parent, "project");
+      await fs.mkdir(ws);
+      await fs.mkdir(outside);
+      await fs.writeFile(path.join(outside, "secret.txt"), "outside secret");
+
+      try {
+        const csPolicy = new PathPolicy(ws, { caseInsensitive: false, isWindows: false });
+        expect(() => csPolicy.resolvePath(path.join(outside, "secret.txt"), "read")).toThrow(SecurityError);
+      } finally {
+        await fs.rm(parent, { recursive: true, force: true }).catch(() => {});
+      }
+    }
+  });
+
+  it("S24: createFsWriteTools com caseInsensitive: false mantém chaves distintas para Arquivo.txt e arquivo.txt (A2)", async () => {
+    const csPolicy = new PathPolicy(tempDir, { caseInsensitive: false, isWindows: false });
+    const writeTools = createFsWriteTools(csPolicy, { caseInsensitive: false });
+    const writeFileTool = writeTools.find((t) => t.name === "writeFile")!;
+    const getDiffTool = writeTools.find((t) => t.name === "getStagedDiff")!;
+
+    await writeFileTool.execute({ path: "Arquivo.txt", content: "Versao A" }, { signal: new AbortController().signal });
+    await writeFileTool.execute({ path: "arquivo.txt", content: "Versao B" }, { signal: new AbortController().signal });
+
+    const diff = (await getDiffTool.execute({}, { signal: new AbortController().signal })) as string;
+    expect(diff).toContain("+++ b/Arquivo.txt");
+    expect(diff).toContain("+++ b/arquivo.txt");
+    expect(diff).toContain("+Versao A");
+    expect(diff).toContain("+Versao B");
+  });
+
+  it("S25: PathPolicy com isWindows: false permite ':' e nomes reservados DOS tradicionais (B2 e B4)", () => {
+    const posixPolicy = new PathPolicy(tempDir, { isWindows: false, caseInsensitive: false });
+    // Permite ':' (ex: timestamp de log)
+    expect(() => posixPolicy.resolvePath("logs/app-2026-10-03T05:00:00.log", "write")).not.toThrow();
+    // Permite nomes reservados MS-DOS como aux.c e con.h
+    expect(() => posixPolicy.resolvePath("src/aux.c", "write")).not.toThrow();
+    expect(() => posixPolicy.resolvePath("src/con.h", "write")).not.toThrow();
+  });
+
+  it("S26: PathPolicy com isWindows: false permite trailing dots e nomes com til (B3 e B5)", () => {
+    const posixPolicy = new PathPolicy(tempDir, { isWindows: false, caseInsensitive: false });
+    // Permite trailing dots
+    expect(() => posixPolicy.resolvePath("src/ellipsis...", "write")).not.toThrow();
+    // Permite nomes com til (8.3)
+    expect(() => posixPolicy.resolvePath("backup~1.txt", "read")).not.toThrow();
+  });
+
+  it("S27: writeFile lida com segmento que colide com arquivo sem lançar ENOTDIR não-tratado (D1)", async () => {
+    await fs.writeFile(path.join(tempDir, "arquivo-colisao"), "conteudo");
+    const writeTools = createFsWriteTools(policy);
+    const writeFileTool = writeTools.find((t) => t.name === "writeFile")!;
+
+    // No Linux real, fs.readFile(".../arquivo-colisao/sub.txt") lança ENOTDIR
+    // Agora é tratado como inexistente no staging inicial
+    const res = await writeFileTool.execute({
+      path: "arquivo-colisao/sub.txt",
+      content: "conteudo novo",
+    }, { signal: new AbortController().signal });
+
+    expect(res).toBeDefined();
+    expect((res as any).staged).toBe(true);
+  });
+
+  it("S28: applyStaged preserva permissões originais (st_mode) do arquivo no disco (D2)", async () => {
+    const scriptPath = path.join(tempDir, "executavel.sh");
+    await fs.writeFile(scriptPath, "#!/bin/sh\necho original\n", { mode: 0o755 });
+
+    const writeTools = createFsWriteTools(policy);
+    const editFileTool = writeTools.find((t) => t.name === "editFile")!;
+    const applyTool = writeTools.find((t) => t.name === "applyStaged")!;
+
+    await editFileTool.execute({
+      path: "executavel.sh",
+      oldText: "echo original",
+      newText: "echo atualizado",
+    }, { signal: new AbortController().signal });
+
+    await applyTool.execute({}, { signal: new AbortController().signal });
+
+    const stat = await fs.stat(scriptPath);
+    if (process.platform !== "win32") {
+      expect(stat.mode & 0o111).toBe(0o111);
+    } else {
+      const content = await fs.readFile(scriptPath, "utf-8");
+      expect(content).toContain("echo atualizado");
+    }
+  });
 });
