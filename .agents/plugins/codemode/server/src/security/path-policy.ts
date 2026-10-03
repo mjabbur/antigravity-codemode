@@ -17,10 +17,19 @@ const DOS_RESERVED = new Set([
   "LPT¹", "LPT²", "LPT³"
 ]);
 
+export interface PathPolicyOptions {
+  caseInsensitive?: boolean;
+  isWindows?: boolean;
+}
+
 export class PathPolicy {
   readonly workspaceRoot: string;
+  readonly caseInsensitive: boolean;
+  readonly isWindows: boolean;
 
-  constructor(workspaceRoot: string) {
+  constructor(workspaceRoot: string, options: PathPolicyOptions = {}) {
+    this.isWindows = options.isWindows ?? (process.platform === "win32");
+    this.caseInsensitive = options.caseInsensitive ?? this.isWindows;
     const resolved = path.resolve(workspaceRoot);
     try {
       this.workspaceRoot = fs.realpathSync(resolved);
@@ -71,12 +80,15 @@ export class PathPolicy {
 
     // 3. Bloqueia Alternate Data Streams (contendo `:` após o drive letter)
     const withoutDrive = /^[a-zA-Z]:/.test(targetPath) ? targetPath.slice(2) : targetPath;
-    if (withoutDrive.includes(":")) {
+    if (this.isWindows && withoutDrive.includes(":")) {
       throw new SecurityError(`Acesso negado: Alternate Data Streams não são permitidos ("${targetPath}").`);
     }
 
     // Bloqueia caracteres de controle / proibidos em caminhos
-    if (/[\x00<>"|?*]/.test(withoutDrive)) {
+    if (targetPath.includes("\0")) {
+      throw new SecurityError(`Caminho inválido: caractere NUL proibido ("${targetPath}").`);
+    }
+    if (this.isWindows && /[\x00<>"|?*]/.test(withoutDrive)) {
       throw new SecurityError(`Acesso negado: caracteres proibidos no caminho ("${targetPath}").`);
     }
 
@@ -86,7 +98,7 @@ export class PathPolicy {
       if (!segment) continue;
 
       // Bloqueia trailing dots e spaces que o Win32 normaliza silenciosamente
-      if (/[. ]+$/.test(segment) && segment !== "." && segment !== "..") {
+      if (this.isWindows && /[. ]+$/.test(segment) && segment !== "." && segment !== "..") {
         throw new SecurityError(`Acesso negado: trailing dots ou espaços não são permitidos no segmento ("${segment}").`);
       }
 
@@ -97,14 +109,16 @@ export class PathPolicy {
       }
 
       // Nomes curtos 8.3 contendo ~ seguido de dígitos
-      if (/~\d+/.test(segment)) {
+      if (this.isWindows && /~\d+/.test(segment)) {
         throw new SecurityError(`Acesso negado: nomes curtos 8.3 não são permitidos ("${segment}").`);
       }
 
       // Validação DOS Reserved: prefixo antes do primeiro ponto
-      const primaryName = segment.replace(/[. ]+$/, "").split(".")[0].trim().toUpperCase();
-      if (DOS_RESERVED.has(primaryName)) {
-        throw new SecurityError(`Acesso negado: nome reservado do MS-DOS ("${segment}").`);
+      if (this.isWindows) {
+        const primaryName = segment.replace(/[. ]+$/, "").split(".")[0].trim().toUpperCase();
+        if (DOS_RESERVED.has(primaryName)) {
+          throw new SecurityError(`Acesso negado: nome reservado do MS-DOS ("${segment}").`);
+        }
       }
     }
 
@@ -152,7 +166,14 @@ export class PathPolicy {
     }
 
     // 7. Verificação de contenção no workspace (relativo estrito)
-    const rel = path.relative(this.workspaceRoot.toLowerCase(), canonical.toLowerCase());
+    if (!this.caseInsensitive) {
+      if (canonical !== this.workspaceRoot && !canonical.startsWith(this.workspaceRoot + path.sep)) {
+        throw new SecurityError(`Acesso negado: o caminho "${targetPath}" está fora do workspace.`);
+      }
+    }
+    const fromRoot = this.caseInsensitive ? this.workspaceRoot.toLowerCase() : this.workspaceRoot;
+    const toTarget = this.caseInsensitive ? canonical.toLowerCase() : canonical;
+    const rel = path.relative(fromRoot, toTarget);
     if (rel === ".." || rel.startsWith(".." + path.sep) || path.isAbsolute(rel)) {
       throw new SecurityError(`Acesso negado: o caminho "${targetPath}" está fora do workspace.`);
     }
