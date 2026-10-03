@@ -40,21 +40,24 @@ describe("Segurança de Caminhos no Windows e Filesystem com Staging (Spec 02 Re
   });
 
   it("S03: Bloqueia nomes reservados do MS-DOS (CON, NUL, AUX, con.tar.gz)", () => {
-    expect(() => policy.resolvePath("CON.txt")).toThrow(SecurityError);
-    expect(() => policy.resolvePath("sub/nul.md")).toThrow(SecurityError);
-    expect(() => policy.resolvePath("aux")).toThrow(SecurityError);
-    expect(() => policy.resolvePath("com1.json")).toThrow(SecurityError);
-    expect(() => policy.resolvePath("con.tar.gz")).toThrow(SecurityError);
+    const winPolicy = new PathPolicy(tempDir, { isWindows: true, caseInsensitive: true });
+    expect(() => winPolicy.resolvePath("CON.txt")).toThrow(SecurityError);
+    expect(() => winPolicy.resolvePath("sub/nul.md")).toThrow(SecurityError);
+    expect(() => winPolicy.resolvePath("aux")).toThrow(SecurityError);
+    expect(() => winPolicy.resolvePath("com1.json")).toThrow(SecurityError);
+    expect(() => winPolicy.resolvePath("con.tar.gz")).toThrow(SecurityError);
   });
 
   it("S04: Bloqueia Alternate Data Streams (ADS) e caracteres proibidos", () => {
-    expect(() => policy.resolvePath("sample.txt:hidden")).toThrow(SecurityError);
-    expect(() => policy.resolvePath("sample.txt\0")).toThrow(SecurityError);
+    const winPolicy = new PathPolicy(tempDir, { isWindows: true, caseInsensitive: true });
+    expect(() => winPolicy.resolvePath("sample.txt:hidden")).toThrow(SecurityError);
+    expect(() => winPolicy.resolvePath("sample.txt\0")).toThrow(SecurityError);
   });
 
   it("S05: Bloqueia trailing dots e spaces que o Win32 normaliza", () => {
-    expect(() => policy.resolvePath("sample.txt.")).toThrow(SecurityError);
-    expect(() => policy.resolvePath("sample.txt ")).toThrow(SecurityError);
+    const winPolicy = new PathPolicy(tempDir, { isWindows: true, caseInsensitive: true });
+    expect(() => winPolicy.resolvePath("sample.txt.")).toThrow(SecurityError);
+    expect(() => winPolicy.resolvePath("sample.txt ")).toThrow(SecurityError);
   });
 
   it("S06: Bloqueia acesso a arquivos de segredos (.env*, *.pem, *.key, .git write)", () => {
@@ -242,7 +245,8 @@ describe("Segurança de Caminhos no Windows e Filesystem com Staging (Spec 02 Re
   });
 
   it("S17: Staging unifica chaves com caixa diferente (A.txt vs a.txt)", async () => {
-    const writeTools = createFsWriteTools(policy);
+    const winPolicy = new PathPolicy(tempDir, { isWindows: true, caseInsensitive: true });
+    const writeTools = createFsWriteTools(winPolicy, { caseInsensitive: true });
     const writeFileTool = writeTools.find((t) => t.name === "writeFile")!;
     const getDiffTool = writeTools.find((t) => t.name === "getStagedDiff")!;
 

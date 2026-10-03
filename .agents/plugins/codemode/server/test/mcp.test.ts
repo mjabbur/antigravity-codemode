@@ -1,14 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
-import nodeFs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { createCodemodeMcpServer, isMainModule } from "../src/mcp/server.ts";
-
-const localWinBin = path.resolve(__dirname, "../../../../../bin/ripwire-0.6.5-windows-x64/ripwire.exe");
-if (!process.env.RIPWIRE_PATH && nodeFs.existsSync(localWinBin)) {
-  process.env.RIPWIRE_PATH = localWinBin;
-}
+import { isRipwireAvailable } from "./helpers/ripwire.ts";
 
 describe("MCP Server Protocol & Codemode Tool Entrypoints (Spec 04)", () => {
   let tempDir: string;
@@ -35,7 +30,7 @@ describe("MCP Server Protocol & Codemode Tool Entrypoints (Spec 04)", () => {
     expect(response.content[0].text).toContain("=== Retorno ===\n42");
   });
 
-  it("M02: codemode_run executa leitura de arquivo e navegação ripwire", async () => {
+  it.skipIf(!isRipwireAvailable())("M02: codemode_run executa leitura de arquivo e navegação ripwire", async () => {
     const { server } = createCodemodeMcpServer({ workspaceRoot: tempDir });
     const tool = (server as any)._registeredTools["codemode_run"];
 
