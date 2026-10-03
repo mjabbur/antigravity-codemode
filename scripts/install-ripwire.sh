@@ -36,7 +36,7 @@ BIN_PATH="${TARGET_DIR}/ripwire"
 if [ -f "${BIN_PATH}" ]; then
     if [ -x "${BIN_PATH}" ]; then
         INSTALLED_VER="$("${BIN_PATH}" --version 2>/dev/null || true)"
-        if echo "${INSTALLED_VER}" | grep -q "${RIPWIRE_VERSION}"; then
+        if echo "${INSTALLED_VER}" | grep -qF "ripwire ${RIPWIRE_VERSION} "; then
             echo "Ripwire v${RIPWIRE_VERSION} is already installed at: ${BIN_PATH}"
             "${BIN_PATH}" --version
             echo ""
@@ -70,9 +70,10 @@ curl -fsSL "${BASE_URL}/${ARCHIVE_NAME}" -o "${TMP_DIR}/${ARCHIVE_NAME}"
 curl -fsSL "${BASE_URL}/${SHA_NAME}" -o "${TMP_DIR}/${SHA_NAME}"
 
 # Allow test override for checksum failure simulation
-if [ -n "${TEST_RIPWIRE_EXPECTED_HASH:-}" ]; then
-    echo "Applying test hash override: ${TEST_RIPWIRE_EXPECTED_HASH}"
-    echo "${TEST_RIPWIRE_EXPECTED_HASH}  ${ARCHIVE_NAME}" > "${TMP_DIR}/${SHA_NAME}"
+TEST_HASH_OVERRIDE="${RIPWIRE_INSTALL_TEST_HASH_OVERRIDE:-${TEST_RIPWIRE_EXPECTED_HASH:-}}"
+if [ -n "${TEST_HASH_OVERRIDE}" ]; then
+    echo "Applying test hash override: ${TEST_HASH_OVERRIDE}"
+    echo "${TEST_HASH_OVERRIDE}  ${ARCHIVE_NAME}" > "${TMP_DIR}/${SHA_NAME}"
 fi
 
 echo "Verifying SHA256 checksum..."

@@ -20,7 +20,7 @@ $BinPath = Join-Path $TargetDir "ripwire.exe"
 if (Test-Path -Path $BinPath -PathType Leaf) {
     try {
         $installedVersion = & $BinPath --version 2>$null
-        if ($installedVersion -like "*$RipwireVersion*") {
+        if ($installedVersion -like "ripwire $RipwireVersion *") {
             Write-Host "Ripwire v$RipwireVersion is already installed at: $BinPath"
             & $BinPath --version
             $jsonBinPath = $BinPath -replace '\\', '/'
@@ -54,9 +54,10 @@ try {
     $expectedHash = ($shaFileContent.Trim() -split '\s+')[0].Trim()
 
     # Allow test override for checksum failure simulation
-    if ($env:TEST_RIPWIRE_EXPECTED_HASH) {
-        Write-Host "Applying test hash override: $env:TEST_RIPWIRE_EXPECTED_HASH"
-        $expectedHash = $env:TEST_RIPWIRE_EXPECTED_HASH.Trim()
+    $testHashOverride = if ($env:RIPWIRE_INSTALL_TEST_HASH_OVERRIDE) { $env:RIPWIRE_INSTALL_TEST_HASH_OVERRIDE } else { $env:TEST_RIPWIRE_EXPECTED_HASH }
+    if ($testHashOverride) {
+        Write-Host "Applying test hash override: $testHashOverride"
+        $expectedHash = $testHashOverride.Trim()
     }
 
     Write-Host "Verifying SHA256 checksum..."
