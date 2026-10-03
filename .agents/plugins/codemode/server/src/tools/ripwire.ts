@@ -16,23 +16,42 @@ export interface RipwireOptions {
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_MAX_BUFFER = 10 * 1024 * 1024; // 10 MB
 
-function resolveBinaryPath(customPath?: string): string {
-  if (customPath && fs.existsSync(customPath)) {
-    return customPath;
+function findInPath(binName: string): string | null {
+  const pathEnv = process.env.PATH ?? "";
+  const dirs = pathEnv.split(path.delimiter);
+  const extensions = process.platform === "win32" ? [".exe", ".cmd", ".bat", ""] : [""];
+  for (const dir of dirs) {
+    if (!dir) continue;
+    for (const ext of extensions) {
+      const full = path.join(dir, binName + ext);
+      try {
+        if (fs.existsSync(full)) {
+          return full;
+        }
+      } catch {}
+    }
+  }
+  return null;
+}
+
+export function resolveBinaryPath(customPath?: string): string | null {
+  if (customPath !== undefined) {
+    return fs.existsSync(customPath) ? customPath : null;
   }
   if (process.env.RIPWIRE_PATH && fs.existsSync(process.env.RIPWIRE_PATH)) {
     return process.env.RIPWIRE_PATH;
   }
+  return findInPath("ripwire");
+}
 
-  // Fallback padrão do ambiente Joker
-  const candidate = "c:\\Dev\\Joker\\bin\\ripwire-0.6.5-windows-x64\\ripwire.exe";
-  if (fs.existsSync(candidate)) {
-    return candidate;
+function getRipwireBinary(options?: RipwireOptions): string {
+  const binary = resolveBinaryPath(options?.binaryPath);
+  if (!binary) {
+    throw new Error(
+      "Binário do Ripwire não encontrado. Defina a variável de ambiente RIPWIRE_PATH ou adicione 'ripwire' ao PATH do sistema."
+    );
   }
-
-  throw new Error(
-    "Binário do Ripwire não encontrado. Defina a variável de ambiente RIPWIRE_PATH ou verifique a instalação."
-  );
+  return binary;
 }
 
 function validateSymbol(symbol: unknown): string {
@@ -46,12 +65,12 @@ function validateSymbol(symbol: unknown): string {
 }
 
 async function executeRipwire(
-  binary: string,
   args: string[],
   cwd: string,
   context?: CodemodeToolContext,
   options?: RipwireOptions
 ): Promise<string> {
+  const binary = getRipwireBinary(options);
   const timeout = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxBuffer = options?.maxBuffer ?? DEFAULT_MAX_BUFFER;
 
@@ -84,8 +103,6 @@ export function createRipwireTools(
   policy: PathPolicy,
   options?: RipwireOptions
 ): CodemodeTool[] {
-  const binary = resolveBinaryPath(options?.binaryPath);
-
   return [
     {
       name: "map",
@@ -118,7 +135,7 @@ export function createRipwireTools(
           cliArgs.push("--json");
         }
 
-        const raw = await executeRipwire(binary, cliArgs, policy.workspaceRoot, context, options);
+        const raw = await executeRipwire(cliArgs, policy.workspaceRoot, context, options);
         if (json) {
           try {
             return JSON.parse(raw);
@@ -152,7 +169,7 @@ export function createRipwireTools(
           cliArgs.push("--signatures-only");
         }
 
-        const raw = await executeRipwire(binary, cliArgs, policy.workspaceRoot, context, options);
+        const raw = await executeRipwire(cliArgs, policy.workspaceRoot, context, options);
         try {
           return JSON.parse(raw);
         } catch {
@@ -175,7 +192,7 @@ export function createRipwireTools(
           : policy.workspaceRoot;
 
         const cliArgs: string[] = [resolvedDir, `--callers=${sym}`, "--json"];
-        const raw = await executeRipwire(binary, cliArgs, policy.workspaceRoot, context, options);
+        const raw = await executeRipwire(cliArgs, policy.workspaceRoot, context, options);
         try {
           return JSON.parse(raw);
         } catch {
@@ -198,7 +215,7 @@ export function createRipwireTools(
           : policy.workspaceRoot;
 
         const cliArgs: string[] = [resolvedDir, `--uses=${sym}`, "--json"];
-        const raw = await executeRipwire(binary, cliArgs, policy.workspaceRoot, context, options);
+        const raw = await executeRipwire(cliArgs, policy.workspaceRoot, context, options);
         try {
           return JSON.parse(raw);
         } catch {
@@ -221,7 +238,7 @@ export function createRipwireTools(
           : policy.workspaceRoot;
 
         const cliArgs: string[] = [resolvedDir, `--impact=${sym}`, "--json"];
-        const raw = await executeRipwire(binary, cliArgs, policy.workspaceRoot, context, options);
+        const raw = await executeRipwire(cliArgs, policy.workspaceRoot, context, options);
         try {
           return JSON.parse(raw);
         } catch {
@@ -253,7 +270,7 @@ export function createRipwireTools(
           `--around=${sym}`,
           `--around-depth=${safeDepth}`,
         ];
-        const raw = await executeRipwire(binary, cliArgs, policy.workspaceRoot, context, options);
+        const raw = await executeRipwire(cliArgs, policy.workspaceRoot, context, options);
         return raw;
       },
     },

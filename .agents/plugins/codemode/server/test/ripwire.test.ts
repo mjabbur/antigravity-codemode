@@ -1,9 +1,27 @@
 import { describe, expect, it } from "vitest";
 import path from "node:path";
+import fs from "node:fs";
 import { PathPolicy, SecurityError } from "../src/security/path-policy.ts";
-import { createRipwireTools } from "../src/tools/ripwire.ts";
+import { createRipwireTools, resolveBinaryPath } from "../src/tools/ripwire.ts";
 
-describe("Ripwire Code Intelligence Integration (Spec 03)", () => {
+const localWinBin = path.resolve(__dirname, "../../../../../bin/ripwire-0.6.5-windows-x64/ripwire.exe");
+if (!process.env.RIPWIRE_PATH && fs.existsSync(localWinBin)) {
+  process.env.RIPWIRE_PATH = localWinBin;
+}
+const isRipwireAvailable = Boolean(resolveBinaryPath());
+
+describe("Ripwire Availability and Lazy Loading (Spec 03 / E1)", () => {
+  it("E1: ferramentas ripwire lançam erro amigável se binário não estiver presente", async () => {
+    const fakePolicy = new PathPolicy(path.resolve(__dirname, ".."));
+    const tools = createRipwireTools(fakePolicy, { binaryPath: "caminho/inexistente/ripwire" });
+    const map = tools.find((t) => t.name === "map")!;
+    await expect(map.execute({}, { signal: new AbortController().signal })).rejects.toThrow(
+      /Binário do Ripwire não encontrado/
+    );
+  });
+});
+
+describe.skipIf(!isRipwireAvailable)("Ripwire Code Intelligence Integration (Spec 03)", () => {
   const workspaceRoot = path.resolve(__dirname, "..");
   const policy = new PathPolicy(workspaceRoot);
   const ripwireTools = createRipwireTools(policy);

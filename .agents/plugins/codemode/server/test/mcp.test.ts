@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
+import nodeFs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { createCodemodeMcpServer, isMainModule } from "../src/mcp/server.ts";
+
+const localWinBin = path.resolve(__dirname, "../../../../../bin/ripwire-0.6.5-windows-x64/ripwire.exe");
+if (!process.env.RIPWIRE_PATH && nodeFs.existsSync(localWinBin)) {
+  process.env.RIPWIRE_PATH = localWinBin;
+}
 
 describe("MCP Server Protocol & Codemode Tool Entrypoints (Spec 04)", () => {
   let tempDir: string;
