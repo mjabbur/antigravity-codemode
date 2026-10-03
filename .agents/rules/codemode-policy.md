@@ -14,6 +14,8 @@ Sempre que a tarefa envolver:
 
 **Prefira utilizar o `codemode_run`** em vez de disparar dezenas de tool calls sequenciais de leitura e busca.
 
+Para tarefas pontuais em arquivo único (edição simples, leitura pontual, grep isolado), **utilize as ferramentas atômicas nativas** (`view_file`, `replace_file_content`).
+
 ---
 
 ## 2. Padrões Obrigatórios
@@ -27,3 +29,6 @@ Sempre que a tarefa envolver:
    - Use `tools["ripwire.map"]` para entender a hierarquia do projeto via Personalized PageRank.
    - Use `tools["ripwire.impact"]` antes de renomear ou alterar a assinatura de um método compartilhado.
    - Use `tools["ripwire.callers"]` para encontrar pontos de chamada imediatos.
+
+3. **Contenção de Tokens**:
+   - Scripts executados em `codemode_run` devem retornar apenas sumários essenciais (ex: contagem de arquivos e status), evitando despejar objetos brutos no contexto da sessão.
