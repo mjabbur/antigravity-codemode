@@ -64,6 +64,7 @@ To rigorously evaluate Codemode against traditional sequential tool calling, we 
 ### 2. Semantic Code Intelligence with Ripwire (Optional & Lazy-Loaded)
 - Code graph built and queried in sub-seconds using **Personalized PageRank**.
 - **Lazy Loading & Dynamic Discovery:** The MCP server boots cleanly without requiring Ripwire to be pre-installed. The binary is resolved on-demand when a `ripwire.*` tool is invoked, checking `RIPWIRE_PATH` first and then falling back to system `PATH` (e.g. `ripwire` or `ripwire.exe`).
+- **Automated Verification & Setup:** Automated installer scripts with SHA256 verification are provided in `scripts/install-ripwire.sh` (Linux x64/arm64) and `scripts/install-ripwire.ps1` (Windows x64).
 - Exposed APIs inside scripts:
   - `tools["ripwire.map"]`: Architectural overview and most influential repository symbols.
   - `tools["ripwire.callers"]`: Direct 1-hop callers of functions or interfaces.
@@ -182,6 +183,9 @@ antigravity-codemode/
 │   ├── BENCHMARK_CODEMODE.md             # Full scientific benchmark report & methodology
 │   ├── PLANO_CODEMODE.md                 # Architectural design and master plan
 │   └── TIME_E_METODOLOGIA.md             # SDD governance and agent collaboration model
+├── scripts/
+│   ├── install-ripwire.ps1               # Automated installer for Windows x64
+│   └── install-ripwire.sh                # Automated installer for Linux x64/arm64
 ├── INSTALL.md                            # Complete installation & setup guide
 ├── HANDOFF.md                            # Operational handoff report
 ├── MEMORY.md                             # Technical session memory and engineering findings
@@ -198,6 +202,7 @@ From the root directory:
 - **Build TypeScript:** `npm run build`
 - **Run automated test suite:** `npm test`
 - **Execute benchmark suite:** `npm run benchmark`
+- **Install Ripwire (optional):** `bash scripts/install-ripwire.sh` (Linux) or `pwsh -File scripts/install-ripwire.ps1` (Windows)
 
 ---
 

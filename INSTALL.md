@@ -12,7 +12,7 @@ Ensure your development environment meets the following requirements:
 - **Git**.
 - **Google Antigravity**: IDE, Desktop 2.0 application, or CLI (`agy`).
 - **Operating System**: Windows 10/11 x64, Linux x64, or macOS.
-- **Ripwire (Optional)**: Provides semantic code intelligence (`ripwire.map`, `ripwire.callers`, `ripwire.impact`, etc.). A native Windows x64 binary is bundled in `bin/ripwire-0.6.5-windows-x64/ripwire.exe`. On Linux and macOS, Ripwire can be installed into your system `PATH` or configured via `RIPWIRE_PATH`. Core sandbox execution (`codemode_run`), file staging, diff inspection, and atomic rollbacks operate completely independently without Ripwire.
+- **Ripwire (Optional)**: Provides semantic code intelligence (`ripwire.map`, `ripwire.callers`, `ripwire.impact`, etc.). Automated installer scripts with SHA256 checksum verification are provided in `scripts/install-ripwire.sh` (Linux) and `scripts/install-ripwire.ps1` (Windows). A native Windows x64 binary is bundled in `bin/ripwire-0.6.5-windows-x64/ripwire.exe`. Core sandbox execution (`codemode_run`), file staging, diff inspection, and atomic rollbacks operate completely independently without Ripwire.
 
 ---
 
@@ -120,18 +120,38 @@ If you prefer to restrict Codemode to a specific project (e.g., committing `.age
 
 ---
 
-## 5. Ripwire Setup on Linux or macOS
+## 5. Ripwire Setup (Linux & Windows)
 
 Ripwire is **optional and lazy-loaded**. The Codemode MCP server starts cleanly and performs all sandbox script execution and staging refactoring even if Ripwire is absent.
 
-If you want semantic code intelligence tools (`ripwire.*`) on Linux or macOS:
-1. Download the corresponding native release from [GitHub: redhat-et/ripwire/releases](https://github.com/redhat-et/ripwire/releases).
-2. Extract the `ripwire` executable to a directory in your system `PATH` (e.g. `/usr/local/bin/ripwire`) or a directory of your choice.
-3. Make it executable:
+### Automated Installation (Recommended)
+
+Automated installation scripts download the official release binaries (v0.6.5), verify their published SHA256 checksums before extraction, extract the binary into the repository's `bin/` directory, and print the configuration line for `mcp_config.json`:
+
+- **On Linux (x64 / arm64):**
+  ```bash
+  bash scripts/install-ripwire.sh
+  ```
+- **On Windows (x64):**
+  ```powershell
+  pwsh -File scripts/install-ripwire.ps1
+  # Or with Windows PowerShell:
+  powershell -File scripts/install-ripwire.ps1
+  ```
+
+Both scripts are idempotent: if Ripwire v0.6.5 is already present, they verify the installed version and exit without re-downloading. They do not require `sudo` or administrator permissions, nor do they modify system PATH, shell profiles, or the Windows Registry.
+
+### Manual Installation (Alternative)
+
+If you prefer to download and verify the binary manually:
+1. Download the release binary for your platform from GitHub: [redhat-et/ripwire/releases](https://github.com/redhat-et/ripwire/releases).
+2. Download the corresponding `.sha256` checksum file and verify the archive hash.
+3. Extract the `ripwire` executable to a directory in your system `PATH` (e.g. `/usr/local/bin/ripwire`) or a directory of your choice.
+4. On Linux, ensure executable permissions:
    ```bash
    chmod +x /usr/local/bin/ripwire
    ```
-4. If the binary is not in your system `PATH`, configure the `"RIPWIRE_PATH"` environment variable in your `mcp_config.json` pointing to the executable.
+5. If the binary is not in your system `PATH`, configure the `"RIPWIRE_PATH"` environment variable in your `mcp_config.json` pointing to the executable.
 
 ---
 
