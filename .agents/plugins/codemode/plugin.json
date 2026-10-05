@@ -1,23 +1,11 @@
 {
   "name": "codemode",
+  "displayName": "Codemode",
   "version": "1.0.0",
-  "description": "QuickJS WASM Sandbox with Ripwire Code Intelligence and Staging-first Filesystem for Antigravity",
-  "author": "Antigravity SDD Team",
-  "mcpServers": {
-    "codemode": {
-      "command": "node",
-      "args": [
-        "c:/Dev/Joker/.agents/plugins/codemode/server/dist/mcp/server.js"
-      ],
-      "env": {
-        "RIPWIRE_PATH": "c:/Dev/Joker/bin/ripwire-0.6.5-windows-x64/ripwire.exe"
-      }
-    }
-  },
-  "skills": [
-    "skills/codemode"
-  ],
-  "rules": [
-    "rules/codemode-policy.md"
+  "description": "QuickJS WebAssembly sandbox with Ripwire code graph and atomic staging filesystem for Antigravity.",
+  "suggestedPrompts": [
+    "Analise a arquitetura deste projeto com o PageRank do Ripwire",
+    "Calcule o blast radius e callers antes de refatorar este método",
+    "Execute refatoração multi-arquivo em lote com staging atômico"
   ]
 }

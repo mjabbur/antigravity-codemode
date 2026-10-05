@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "codemode": {
+      "command": "node",
+      "args": [
+        "server/dist/mcp/server.js"
+      ]
+    }
+  }
+}

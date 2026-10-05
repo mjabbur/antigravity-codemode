@@ -39,84 +39,45 @@ npm test
 
 ---
 
-## 3. Option A: Global Installation (Recommended)
+## 3. Installing Antigravity Plugins
 
-Global installation registers the MCP server and skills in Antigravity's global configuration directory (`~/.gemini/config/`). This makes `codemode_run`, `codemode_apply`, `codemode_discard`, and the `/codemode` slash command **automatically available across all projects on your machine** without per-project configuration.
+The repository provides two modular, self-contained plugins under `.agents/plugins/`:
+- **`codemode`**: Pure QuickJS WASM sandbox execution and atomic staging filesystem.
+- **`ripwire`**: Semantic code intelligence with 17 progressive-disclosure skills and native MCP server (`ripwire --mcp`).
 
-### Automated Setup via PowerShell (Windows):
+You can install either or both plugins globally or use them directly at workspace level.
 
-Replace `C:/path/to/antigravity-codemode` with the absolute path where you cloned the repository:
+### Option A: Global Installation (Recommended)
 
+Global installation copies or links the plugin directories into Antigravity's global plugin directory (`~/.gemini/config/plugins/`). Once installed, their MCP servers, skills, and rules become automatically available across all projects on your machine.
+
+#### Linux / macOS:
+```bash
+# Install both plugins globally
+mkdir -p ~/.gemini/config/plugins
+cp -r .agents/plugins/codemode ~/.gemini/config/plugins/
+cp -r .agents/plugins/ripwire ~/.gemini/config/plugins/
+```
+
+#### Windows (PowerShell):
 ```powershell
-$REPO_PATH = "C:/Dev/antigravity-codemode" # adjust to your actual clone directory
-
-# 1. Create global Antigravity directories
-New-Item -ItemType Directory -Force -Path "$HOME\.gemini\config\skills\codemode"
-New-Item -ItemType Directory -Force -Path "$HOME\.gemini\config\plugins\codemode\skills\codemode"
-
-# 2. Copy Skill and Manifest files
-Copy-Item "$REPO_PATH\.agents\skills\codemode\SKILL.md" "$HOME\.gemini\config\skills\codemode\SKILL.md" -Force
-Copy-Item "$REPO_PATH\.agents\skills\codemode\SKILL.md" "$HOME\.gemini\config\plugins\codemode\skills\codemode\SKILL.md" -Force
-Copy-Item "$REPO_PATH\.agents\plugins\codemode\plugin.json" "$HOME\.gemini\config\plugins\codemode\plugin.json" -Force
-
-# 3. Configure Global MCP Server (~/.gemini/config/mcp_config.json)
-$mcpJson = @"
-{
-  "mcpServers": {
-    "codemode": {
-      "command": "node",
-      "args": [
-        "$REPO_PATH/.agents/plugins/codemode/server/dist/mcp/server.js"
-      ],
-      "env": {
-        "RIPWIRE_PATH": "$REPO_PATH/bin/ripwire-0.6.5-windows-x64/ripwire.exe"
-      }
-    }
-  }
-}
-"@
-Set-Content -Path "$HOME\.gemini\config\mcp_config.json" -Value $mcpJson -Encoding UTF8
-Copy-Item "$HOME\.gemini\config\mcp_config.json" "$HOME\.gemini\config\plugins\codemode\mcp_config.json" -Force
-
-Write-Host "Codemode successfully installed and registered globally!" -ForegroundColor Green
+# Install both plugins globally
+New-Item -ItemType Directory -Force -Path "$HOME\.gemini\config\plugins"
+Copy-Item -Recurse -Force ".agents\plugins\codemode" "$HOME\.gemini\config\plugins\codemode"
+Copy-Item -Recurse -Force ".agents\plugins\ripwire" "$HOME\.gemini\config\plugins\ripwire"
 ```
 
-### Manual MCP Server Configuration (Windows, Linux, macOS):
-
-If you already have existing MCP servers configured in `~/.gemini/config/mcp_config.json`, simply add the `"codemode"` entry to your `"mcpServers"` object:
-
-```json
-{
-  "mcpServers": {
-    "codemode": {
-      "command": "node",
-      "args": [
-        "/path/to/antigravity-codemode/.agents/plugins/codemode/server/dist/mcp/server.js"
-      ],
-      "env": {
-        "RIPWIRE_PATH": "/path/to/antigravity-codemode/bin/ripwire-0.6.5-windows-x64/ripwire.exe"
-      }
-    }
-  }
-}
-```
-
-> [!TIP]
-> - On Linux or macOS, `"RIPWIRE_PATH"` is optional if `ripwire` is placed in your system `PATH`.
-> - In JSON files on Windows, always use forward slashes (`/`) or double backslashes (`\\`) in path values.
+Restart Google Antigravity to discover the newly added plugins.
 
 ---
 
 ## 4. Option B: Project / Workspace-Level Installation
 
-If you prefer to restrict Codemode to a specific project (e.g., committing `.agents` to VCS for your team):
+Both plugins reside under `.agents/plugins/`. When opening this repository (or any project containing this `.agents` directory), Antigravity discovers and mounts them automatically.
 
-1. Copy the `.agents/` directory from this repository into the root of your target project:
-   ```bash
-   cp -r .agents/ /path/to/your/project/
-   ```
-2. In `/path/to/your/project/.agents/mcp_config.json`, ensure the paths to `server.js` point to valid compiled files on the host.
-3. When opening that project in Antigravity, the agent will discover `.agents/` automatically.
+To share with your team via version control:
+1. Commit `.agents/plugins/` to your repository.
+2. Team members running Antigravity will automatically have both plugins discovered on repository open.
 
 ---
 
